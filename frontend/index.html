@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroCo — Space Festival VR Assistant</title>
+    <meta name="description" content="An immersive WebXR astronomy assistant powered by AI, featuring a VRM anime avatar in a lunar environment.">
+</head>
+<body>
+    <!-- Start Screen Overlay -->
+    <div id="startOverlay">
+        <div class="hud-ring"></div>
+        <div class="hud-ring-2"></div>
+        <button id="startBtn">Enter Space Festival</button>
+    </div>
+
+    <!-- Chat Input Bar -->
+    <div id="chatOverlay" class="glass-panel">
+        <input type="text" id="chatInput" placeholder="Establish Comm-Link..." />
+        <button id="chatSendBtn">Transmit</button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading">Establishing Neural Link...</div>
+
+    <!-- Subtitle/Caption Bar -->
+    <div id="caption" class="glass-panel"></div>
+
+    <!-- Debug HUD -->
+    <div id="debug" class="glass-panel">
+        SYS_WS: <span id="wsStatus">connecting</span><br/>
+        AUD_LVL: <span id="vol">0.000</span><br/>
+        SPEECH: <span id="speech">0.000</span><br/>
+        GESTURE: <span id="gesture">(none)</span><br/>
+        PARAM_ID: <span id="param">(detecting)</span><br/>
+        RIG_DATA: <span id="rig">(detecting)</span>
+    </div>
+
+    <!-- WebGL Canvas -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Entry Point -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

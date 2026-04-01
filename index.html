@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroCo</title>
+        <!-- Three.js is loaded via ES Modules inside the main script block.
+            This avoids relying on legacy globals like THREE.GLTFLoader. -->
+
+        <!-- Import map so Three.js examples can import from bare specifiers like "three" -->
+        <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.1.1/lib/three-vrm.module.js"
+            }
+        }
+        </script>
+
+    <!-- Core Live2D Web SDK -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+    <!-- Pixi Live2D Display Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+    <!-- GSAP for smooth character animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap');
+        :root {
+            --primary: #00ffcc;
+            --primary-glow: rgba(0, 255, 204, 0.4);
+            --bg-glass: rgba(15, 20, 30, 0.45);
+            --border-glass: rgba(255, 255, 255, 0.15);
+        }
+        body { margin: 0; overflow: hidden; background-color: #050510; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Outfit', sans-serif; color: #fff; }
+        canvas { display: block; }
+        
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px) saturate(120%);
+            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        #loading {
+            position: absolute;
+            top: 20%;
+            color: var(--primary);
+            font-weight: 300;
+            font-size: 18px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: pulseText 1.5s infinite alternate;
+            z-index: 1001;
+        }
+        @keyframes pulseText { 0% { opacity: 0.5; } 100% { opacity: 1; text-shadow: 0 0 10px var(--primary-glow); } }
+
+        #caption {
+            position: absolute;
+            left: 50%;
+            bottom: 140px;
+            transform: translateX(-50%);
+            width: min(700px, calc(100vw - 60px));
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 17px;
+            font-weight: 400;
+            line-height: 1.6;
+            text-align: center;
+            padding: 14px 22px;
+            border-radius: 16px;
+            user-select: none;
+            pointer-events: none;
+            white-space: pre-wrap;
+            transition: opacity 0.3s ease;
+            z-index: 400;
+        }
+        #caption:not(:empty) { opacity: 1; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        #caption:empty { opacity: 0; }
+        @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+        #debug {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 11px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.8;
+            user-select: none;
+            color: rgba(255, 255, 255, 0.8);
+            border-left: 3px solid var(--primary);
+        }
+        #debug span { color: var(--primary); font-weight: bold; }
+
+        #startOverlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(20, 10, 40, 0.7) 0%, rgba(5, 5, 10, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .hud-ring {
+            position: absolute;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            border: 2px dashed rgba(0, 255, 204, 0.2);
+            animation: spin 30s linear infinite;
+            pointer-events: none;
+        }
+        .hud-ring-2 {
+            position: absolute;
+            width: 400px; height: 400px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 204, 0.1);
+            border-top: 2px solid var(--primary);
+            animation: spin-reverse 20s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+
+        #startBtn {
+            position: relative;
+            padding: 16px 48px;
+            font-size: 22px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            background: rgba(0, 255, 204, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 50px;
+            box-shadow: 0 0 15px var(--primary-glow), inset 0 0 15px var(--primary-glow);
+            text-shadow: 0 0 8px var(--primary-glow);
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+        #startBtn:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px rgba(255,255,255,0.5);
+            transform: scale(1.05);
+        }
+
+        #chatOverlay {
+            position: absolute;
+            bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: none;
+            z-index: 500;
+            padding: 10px 16px;
+            border-radius: 30px;
+            gap: 10px;
+            align-items: center;
+        }
+        #chatInput {
+            width: 320px; padding: 14px 24px;
+            font-family: 'Outfit', sans-serif; font-size: 16px; color: #fff;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px; outline: none; transition: all 0.3s ease;
+        }
+        #chatInput::placeholder { color: rgba(255, 255, 255, 0.5); }
+        #chatInput:focus { border-color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); background: rgba(0, 0, 0, 0.4); }
+        #chatSendBtn {
+            padding: 12px 24px;
+            font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600;
+            color: #000; background: var(--primary);
+            border: none; border-radius: 24px; cursor: pointer;
+            box-shadow: 0 0 10px var(--primary-glow); transition: all 0.2s ease;
+        }
+        #chatSendBtn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--primary-glow); background: #33ffdb; }
+        
+        .mic-btn-modern {
+            padding: 12px 24px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600;
+            color: #fff; background: rgba(85, 85, 255, 0.3); border: 1px solid rgba(85, 85, 255, 0.8);
+            border-radius: 24px; cursor: pointer; backdrop-filter: blur(10px);
+            box-shadow: 0 0 10px rgba(85, 85, 255, 0.4); transition: all 0.2s ease;
+        }
+        .mic-btn-modern:hover { transform: scale(1.05); background: rgba(85, 85, 255, 0.5); }
+
+        /* Hide/style the ugly VR NOT SUPPORTED button */
+        #VRButton, [id^="VR"] {
+            position: fixed !important;
+            bottom: 10px !important;
+            right: 10px !important;
+            left: auto !important;
+            width: auto !important;
+            padding: 8px 16px !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-size: 11px !important;
+            letter-spacing: 1px !important;
+            background: rgba(15, 20, 30, 0.6) !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 20px !important;
+            backdrop-filter: blur(10px) !important;
+            z-index: 100 !important;
+            opacity: 0.5 !important;
+            transition: opacity 0.3s !important;
+        }
+        #VRButton:hover, [id^="VR"]:hover {
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="startOverlay">
+        <div class="hud-ring"></div>
+        <div class="hud-ring-2"></div>
+        <button id="startBtn">Enter Space Festival</button>
+    </div>
+    <div id="chatOverlay" class="glass-panel">
+        <input type="text" id="chatInput" placeholder="Establish Comm-Link..." />
+        <button id="chatSendBtn">Transmit</button>
+    </div>
+    <div id="loading">Establishing Neural Link...</div>
+    <div id="caption" class="glass-panel"></div>
+    <div id="debug" class="glass-panel">
+        SYS_WS: <span id="wsStatus">connecting</span><br/>
+        AUD_LVL: <span id="vol">0.000</span><br/>
+        SPEECH: <span id="speech">0.000</span><br/>
+        GESTURE: <span id="gesture">(none)</span><br/>
+        PARAM_ID: <span id="param">(detecting)</span><br/>
+        RIG_DATA: <span id="rig">(detecting)</span>
+    </div>
+    <canvas id="canvas"></canvas>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+        import { VRMLoaderPlugin, VRMUtils, VRMHumanBoneName, VRMExpressionPresetName } from '@pixiv/three-vrm';
+        import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+        // Ensure consistent color handling across browsers/Three versions
+        try { THREE.ColorManagement.enabled = true; } catch {}
+
+        const canvas = document.getElementById('canvas');
+
+        // Point this at either:
+        // - a local GLB: "character.glb" (recommended)
+        // - a Live2D json: "some_model.model3.json"
+        // - a remote URL (if CORS allows)
+        const modelUrl = "models/space-avatar.vrm";
+
+        let mouthValue = 0.0;
+
+        // Live2D state
+        let live2dApp = null;
+        let currentLive2dModel = null;
+        let live2dMouthParamId = null;
+
+        // GLB state
+        let threeRenderer = null;
+        let threeScene = null;
+        let threeCamera = null;
+        let glbRoot = null;
+        let glbMouth = null; // { mesh, index, name } OR { bone, name }
+        let glbBones = null;
+        let glbBoneBase = null;
+        let glbJawBase = null;
+        let glbRootBase = null;
+        let glbRigInfo = null;
+
+        // VRM state
+        let vrm = null;
+        let vrmBaseRotations = null;
+        let vrmMouthMode = null; // 'blendshape'
+
+        // Gesture/expression state (one-shot events from Python)
+        let activeGesture = null; // { name, startS, durationS, id }
+        let lastGestureId = null;
+
+        let activeExpression = null;
+        let clock = new THREE.Clock();
+        // { name, startS, durationS, value, id }
+        let lastExpressionId = null;
+
+        // Smooth volume on the client for nicer animation
+        let speechLevel = 0.0;
+
+        const wsStatusEl = document.getElementById('wsStatus');
+        const volEl = document.getElementById('vol');
+        const speechEl = document.getElementById('speech');
+        const paramEl = document.getElementById('param');
+        const rigEl = document.getElementById('rig');
+        const gestureEl = document.getElementById('gesture');
+        const captionEl = document.getElementById('caption');
+
+        const toIdString = (id) => {
+            try { return String(id); } catch { return '' + id; }
+        }
+
+        const detectLive2dMouthParam = (model) => {
+            try {
+                const core = model.internalModel.coreModel;
+                const ids = [];
+
+                if (core && typeof core.getParameterCount === 'function' && typeof core.getParameterId === 'function') {
+                    const count = core.getParameterCount();
+                    for (let i = 0; i < count; i++) {
+                        ids.push(toIdString(core.getParameterId(i)));
+                    }
+                }
+
+                const preferred = [
+                    'ParamMouthOpenY',
+                    'PARAM_MOUTH_OPEN_Y',
+                    'ParamMouthOpen',
+                    'MouthOpen',
+                    'ParamMouthOpenX',
+                ];
+
+                for (const p of preferred) {
+                    if (ids.includes(p)) return p;
+                }
+
+                const fallback = ids.find(x => /mouth/i.test(x) && /open/i.test(x));
+                return fallback || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        const setupLive2d = async () => {
+            live2dApp = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                resizeTo: window,
+                backgroundColor: 0x222222
+            });
+
+            const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+            document.getElementById('loading').style.display = 'none';
+            live2dApp.stage.addChild(model);
+
+            const updateTransform = () => {
+                const scaleX = innerWidth / model.width;
+                const scaleY = innerHeight / model.height;
+                model.scale.set(Math.min(scaleX, scaleY) * 0.85);
+                model.x = (innerWidth - model.width * model.scale.x) / 2;
+                model.y = (innerHeight - model.height * model.scale.y) / 2 + (model.height * model.scale.y * 0.1);
+            };
+            updateTransform();
+            window.addEventListener('resize', updateTransform);
+
+            currentLive2dModel = model;
+            live2dMouthParamId = detectLive2dMouthParam(model);
+            paramEl.textContent = live2dMouthParamId || '(not found)';
+
+            live2dApp.ticker.add(() => {
+                if (!currentLive2dModel) return;
+                const v = mouthValue;
+                try {
+                    const core = currentLive2dModel.internalModel.coreModel;
+                    if (!core || typeof core.setParameterValueById !== 'function') return;
+
+                    if (live2dMouthParamId) {
+                        core.setParameterValueById(live2dMouthParamId, v);
+                    } else {
+                        core.setParameterValueById('ParamMouthOpenY', v);
+                        core.setParameterValueById('PARAM_MOUTH_OPEN_Y', v);
+                    }
+                } catch (e) {}
+            });
+        }
+
+        const findGlbMouthTarget = (root) => {
+            // 1) Prefer morph targets / blendshapes with mouth/viseme names
+            let best = null;
+            root.traverse((obj) => {
+                if (!obj.isMesh) return;
+                const dict = obj.morphTargetDictionary;
+                const influences = obj.morphTargetInfluences;
+                if (!dict || !influences) return;
+                for (const [name, idx] of Object.entries(dict)) {
+                    const n = String(name).toLowerCase();
+                    // Common names across VRM/ARKit/various rigs
+                    if (
+                        n.includes('viseme') ||
+                        n.includes('jawopen') ||
+                        n.includes('mouthopen') ||
+                        n.includes('mouth_open') ||
+                        n.includes('mouth open') ||
+                        n.includes('vrc.v_aa') ||
+                        n === 'a' ||
+                        n === 'aa' ||
+                        n.endsWith('_a')
+                    ) {
+                        best = { type: 'morph', mesh: obj, index: idx, name };
+                        return;
+                    }
+                }
+            });
+            if (best) return best;
+
+            // 2) Fallback: try jaw bone rotation
+            let jawBone = null;
+            root.traverse((obj) => {
+                const nm = (obj.name || '').toLowerCase();
+                if (!obj.isBone) return;
+                if (nm.includes('jaw') || nm.includes('mouth')) {
+                    jawBone = obj;
+                }
+            });
+            if (jawBone) return { type: 'bone', bone: jawBone, name: jawBone.name || 'jaw' };
+
+            return null;
+        }
+
+        const findGlbBones = (root) => {
+            const bones = {};
+
+            const want = {
+                spine: /\bspine\b/i,
+                spine1: /\bspine1\b/i,
+                spine2: /\bspine2\b/i,
+                chest: /\bchest\b/i,
+                neck: /\bneck\b/i,
+                head: /\bhead\b/i,
+                jaw: /\bjaw\b/i,
+
+                leftShoulder: /leftshoulder|lshoulder|\bshoulder\.l\b|\bclaviclel\b/i,
+                leftUpperArm: /leftarm|lupperarm|\bupperarm\.l\b|\barm\.l\b/i,
+                leftLowerArm: /leftforearm|lforearm|\blowerarm\.l\b|\bforearm\.l\b/i,
+                leftHand: /lefthand|\bhand\.l\b|\bwrist\.l\b/i,
+
+                rightShoulder: /rightshoulder|rshoulder|\bshoulder\.r\b|\bclavicler\b/i,
+                rightUpperArm: /rightarm|rupperarm|\bupperarm\.r\b|\barm\.r\b/i,
+                rightLowerArm: /rightforearm|rforearm|\blowerarm\.r\b|\bforearm\.r\b/i,
+                rightHand: /righthand|\bhand\.r\b|\bwrist\.r\b/i,
+            };
+
+            root.traverse((obj) => {
+                if (!obj.isBone) return;
+                const n = (obj.name || '').trim();
+                if (!n) return;
+
+                for (const [key, rx] of Object.entries(want)) {
+                    if (!bones[key] && rx.test(n)) {
+                        bones[key] = obj;
+                    }
+                }
+            });
+
+            return bones;
+        }
+
+        const getGlbRigInfo = (root) => {
+            const info = {
+                meshCount: 0,
+                skinnedMeshCount: 0,
+                boneCount: 0,
+                morphTargetCount: 0,
+            };
+
+            root.traverse((obj) => {
+                if (obj.isBone) info.boneCount++;
+                if (obj.isMesh) {
+                    info.meshCount++;
+                    if (obj.isSkinnedMesh) info.skinnedMeshCount++;
+                    if (obj.morphTargetDictionary) {
+                        info.morphTargetCount += Object.keys(obj.morphTargetDictionary).length;
+                    }
+                }
+            });
+
+            return info;
+        }
+
+        const computeMeshBounds = (root) => {
+            // Using Box3.setFromObject(root) includes bones/empties which can make the bounds weird.
+            // We compute bounds from visible meshes only.
+            const box = new THREE.Box3();
+            let hasMesh = false;
+            root.traverse((obj) => {
+                if (!obj || !obj.isMesh) return;
+                const geom = obj.geometry;
+                if (!geom) return;
+
+                if (!geom.boundingBox) {
+                    try { geom.computeBoundingBox(); } catch {}
+                }
+                const bb = geom.boundingBox;
+                if (!bb) return;
+
+                const worldBB = bb.clone();
+                worldBB.applyMatrix4(obj.matrixWorld);
+
+                if (!hasMesh) {
+                    box.copy(worldBB);
+                    hasMesh = true;
+                } else {
+                    box.union(worldBB);
+                }
+            });
+            return hasMesh ? box : new THREE.Box3().setFromObject(root);
+        }
+
+        const fitGlbToView = (root, camera) => {
+            // Ensure transforms are up to date before measuring
+            try { root.updateWorldMatrix(true, true); } catch {}
+
+            const box = computeMeshBounds(root);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            // Center the model at the origin
+            root.position.x -= center.x;
+            root.position.y -= center.y;
+            root.position.z -= center.z;
+
+            const fov = camera.fov * (Math.PI / 180);
+            const aspect = camera.aspect || (window.innerWidth / window.innerHeight);
+
+            // Use the largest dimension to avoid tiny/huge fits caused by extreme aspect ratios
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const distance = (maxDim * 0.5) / Math.tan(fov * 0.5);
+
+            const margin = 1.35; // bigger = more space around model
+            const cameraZ = Math.max(0.35, distance * margin);
+
+            camera.position.set(0, 0, cameraZ);
+            camera.near = Math.max(0.01, distance / 100);
+            camera.far = Math.max(1000, distance * 100);
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+        }
+
+        const setupGlb = async () => {
+            threeRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+            threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            threeRenderer.setSize(window.innerWidth, window.innerHeight, false);
+            threeRenderer.setClearColor(0x222222, 1);
+            // Correct color output (otherwise textures often look gray/washed)
+            threeRenderer.outputColorSpace = THREE.SRGBColorSpace;
+            threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            threeRenderer.toneMappingExposure = 1.0;
+
+            threeScene = new THREE.Scene();
+            threeCamera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.01, 1000);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+            const key = new THREE.DirectionalLight(0xffffff, 1.2);
+            key.position.set(1, 2, 3);
+            threeScene.add(ambient);
+            threeScene.add(key);
+
+            const loader = new GLTFLoader();
+            const gltf = await loader.loadAsync(modelUrl);
+            glbRoot = gltf.scene;
+            threeScene.add(glbRoot);
+            document.getElementById('loading').style.display = 'none';
+
+            fitGlbToView(glbRoot, threeCamera);
+
+            glbRootBase = {
+                position: glbRoot.position.clone(),
+                rotation: glbRoot.rotation.clone(),
+                scale: glbRoot.scale.clone(),
+            };
+
+            glbMouth = findGlbMouthTarget(glbRoot);
+            glbBones = findGlbBones(glbRoot);
+            glbBoneBase = {};
+            if (glbBones) {
+                for (const [key, bone] of Object.entries(glbBones)) {
+                    if (!bone) continue;
+                    glbBoneBase[key] = { x: bone.rotation.x, y: bone.rotation.y, z: bone.rotation.z };
+                }
+            }
+            if (glbMouth && glbMouth.type === 'bone' && glbMouth.bone) {
+                glbJawBase = { x: glbMouth.bone.rotation.x, y: glbMouth.bone.rotation.y, z: glbMouth.bone.rotation.z };
+            } else {
+                glbJawBase = null;
+            }
+
+            glbRigInfo = getGlbRigInfo(glbRoot);
+            const boneKeys = glbBones ? Object.keys(glbBones).filter(k => !!glbBones[k]) : [];
+            rigEl.textContent = `meshes=${glbRigInfo.meshCount}, skinned=${glbRigInfo.skinnedMeshCount}, bones=${glbRigInfo.boneCount}, morphs=${glbRigInfo.morphTargetCount}, boneKeys=[${boneKeys.join(',')}]`;
+            paramEl.textContent = glbMouth ? (glbMouth.type + ':' + glbMouth.name) : '(no mouth target)';
+
+            const onResize = () => {
+                threeRenderer.setSize(window.innerWidth, window.innerHeight, false);
+                threeCamera.aspect = window.innerWidth / window.innerHeight;
+                threeCamera.updateProjectionMatrix();
+                if (glbRoot) {
+                    fitGlbToView(glbRoot, threeCamera);
+                    glbRootBase = {
+                        position: glbRoot.position.clone(),
+                        rotation: glbRoot.rotation.clone(),
+                        scale: glbRoot.scale.clone(),
+                    };
+                }
+            }
+            window.addEventListener('resize', onResize);
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Smooth speech level (fast up, slower down)
+                const vRaw = mouthValue;
+                if (vRaw > speechLevel) {
+                    speechLevel = speechLevel * 0.75 + vRaw * 0.25;
+                } else {
+                    speechLevel = speechLevel * 0.88 + vRaw * 0.12;
+                }
+                speechEl.textContent = speechLevel.toFixed(3);
+
+                const t = performance.now() * 0.001;
+                const s = Math.max(0, Math.min(1, speechLevel));
+                const wave = Math.sin(t * 6.0);
+                const waveSlow = Math.sin(t * 2.0);
+
+                // Drive mouth
+                if (glbMouth) {
+                    const v = s;
+                    if (glbMouth.type === 'morph') {
+                        glbMouth.mesh.morphTargetInfluences[glbMouth.index] = v;
+                    } else if (glbMouth.type === 'bone') {
+                        // small jaw drop rotation
+                        const base = glbJawBase || { x: 0, y: 0, z: 0 };
+                        glbMouth.bone.rotation.x = base.x + (-0.35 * v);
+                        glbMouth.bone.rotation.y = base.y;
+                        glbMouth.bone.rotation.z = base.z;
+                    }
+                }
+
+                // Drive whole-body motion from speech
+                if (glbBones) {
+                    const torsoKey = glbBones.spine2 ? 'spine2' : (glbBones.chest ? 'chest' : (glbBones.spine1 ? 'spine1' : (glbBones.spine ? 'spine' : null)));
+                    const torso = torsoKey ? glbBones[torsoKey] : null;
+                    if (torso && glbBoneBase && glbBoneBase[torsoKey]) {
+                        const base = glbBoneBase[torsoKey];
+                        torso.rotation.y = base.y + (0.08 * s * waveSlow);
+                        torso.rotation.x = base.x + (0.04 * s * Math.sin(t * 3.0));
+                        torso.rotation.z = base.z;
+                    }
+
+                    const headKey = glbBones.head ? 'head' : (glbBones.neck ? 'neck' : null);
+                    const head = headKey ? glbBones[headKey] : null;
+                    if (head && glbBoneBase && glbBoneBase[headKey]) {
+                        const base = glbBoneBase[headKey];
+                        head.rotation.x = base.x + (0.06 * s * (0.6 + 0.4 * wave));
+                        head.rotation.y = base.y + (0.05 * s * Math.sin(t * 2.7));
+                        head.rotation.z = base.z;
+                    }
+
+                    const lUpperKey = glbBones.leftUpperArm ? 'leftUpperArm' : (glbBones.leftShoulder ? 'leftShoulder' : null);
+                    const rUpperKey = glbBones.rightUpperArm ? 'rightUpperArm' : (glbBones.rightShoulder ? 'rightShoulder' : null);
+                    const lForeKey = glbBones.leftLowerArm ? 'leftLowerArm' : null;
+                    const rForeKey = glbBones.rightLowerArm ? 'rightLowerArm' : null;
+                    const lHandKey = glbBones.leftHand ? 'leftHand' : null;
+                    const rHandKey = glbBones.rightHand ? 'rightHand' : null;
+
+                    const lUpper = lUpperKey ? glbBones[lUpperKey] : null;
+                    const rUpper = rUpperKey ? glbBones[rUpperKey] : null;
+                    const lFore = lForeKey ? glbBones[lForeKey] : null;
+                    const rFore = rForeKey ? glbBones[rForeKey] : null;
+                    const lHand = lHandKey ? glbBones[lHandKey] : null;
+                    const rHand = rHandKey ? glbBones[rHandKey] : null;
+
+                    if (lUpper && glbBoneBase && glbBoneBase[lUpperKey]) {
+                        const base = glbBoneBase[lUpperKey];
+                        lUpper.rotation.z = base.z + (0.10 * s * (0.6 + 0.4 * waveSlow));
+                        lUpper.rotation.x = base.x + (-0.06 * s);
+                        lUpper.rotation.y = base.y;
+                    }
+                    if (rUpper && glbBoneBase && glbBoneBase[rUpperKey]) {
+                        const base = glbBoneBase[rUpperKey];
+                        rUpper.rotation.z = base.z + (-0.10 * s * (0.6 + 0.4 * waveSlow));
+                        rUpper.rotation.x = base.x + (-0.06 * s);
+                        rUpper.rotation.y = base.y;
+                    }
+                    if (lFore && glbBoneBase && glbBoneBase[lForeKey]) {
+                        const base = glbBoneBase[lForeKey];
+                        lFore.rotation.x = base.x + (-0.10 * s * (0.5 + 0.5 * wave));
+                        lFore.rotation.y = base.y;
+                        lFore.rotation.z = base.z;
+                    }
+                    if (rFore && glbBoneBase && glbBoneBase[rForeKey]) {
+                        const base = glbBoneBase[rForeKey];
+                        rFore.rotation.x = base.x + (-0.10 * s * (0.5 + 0.5 * wave));
+                        rFore.rotation.y = base.y;
+                        rFore.rotation.z = base.z;
+                    }
+                    if (lHand && glbBoneBase && glbBoneBase[lHandKey]) {
+                        const base = glbBoneBase[lHandKey];
+                        lHand.rotation.z = base.z + (0.10 * s * Math.sin(t * 7.0));
+                        lHand.rotation.x = base.x;
+                        lHand.rotation.y = base.y;
+                    }
+                    if (rHand && glbBoneBase && glbBoneBase[rHandKey]) {
+                        const base = glbBoneBase[rHandKey];
+                        rHand.rotation.z = base.z + (-0.10 * s * Math.sin(t * 7.0));
+                        rHand.rotation.x = base.x;
+                        rHand.rotation.y = base.y;
+                    }
+                }
+
+                // Fallback for static/unrigged GLBs (no jaw morphs/bones, no arm bones)
+                if (glbRoot && glbRootBase && glbRigInfo) {
+                    const hasMouthTarget = !!glbMouth;
+                    const hasMorphs = glbRigInfo.morphTargetCount > 0;
+                    const hasUsableSkeleton = glbRigInfo.boneCount > 1;
+                    if (!hasMouthTarget && !hasMorphs && !hasUsableSkeleton) {
+                        const baseP = glbRootBase.position;
+                        const baseR = glbRootBase.rotation;
+                        glbRoot.position.y = baseP.y + (0.035 * s * (0.4 + 0.6 * waveSlow));
+                        glbRoot.rotation.z = baseR.z + (0.05 * s * wave);
+                        glbRoot.rotation.y = baseR.y + (0.06 * s * waveSlow);
+                        glbRoot.rotation.x = baseR.x + (0.03 * s * Math.sin(t * 3.6));
+                    }
+                }
+
+                threeRenderer.render(threeScene, threeCamera);
+            }
+
+            animate();
+        }
+
+        const getVrmBone = (boneName) => {
+            try {
+                if (!vrm || !vrm.humanoid) return null;
+                return vrm.humanoid.getNormalizedBoneNode(boneName) || null;
+            } catch {
+                return null;
+            }
+        }
+
+                const startEvent = (ev) => {
+            if (!ev || !ev.type) return;
+
+            if (ev.type === 'caption') {
+                if (captionEl) {
+                    captionEl.textContent = String(ev.text || '');
+                }
+                return;
+            }
+
+            if (ev.type === 'gesture') {
+                const id = ev.id || null;
+                if (id && id === lastGestureId) return;
+                lastGestureId = id;
+
+                const name = ev.name || '';
+                const allowed = new Set(['wave', 'nod', 'shake', 'shrug']);
+                if (!allowed.has(name)) return;
+
+                if (gestureEl) gestureEl.textContent = name;
+                
+                // Using GSAP for silky smooth "proper" animations
+                const head = getVrmBone(VRMHumanBoneName.Head) || getVrmBone(VRMHumanBoneName.Neck);
+                const torso = getVrmBone(VRMHumanBoneName.Chest) || getVrmBone(VRMHumanBoneName.Spine);
+                const rUpper = getVrmBone(VRMHumanBoneName.RightUpperArm);
+                const rFore = getVrmBone(VRMHumanBoneName.RightLowerArm);
+                const rHand = getVrmBone(VRMHumanBoneName.RightHand);
+                const lUpper = getVrmBone(VRMHumanBoneName.LeftUpperArm);
+
+                // Revert any running GSAP animations on bones
+                const bonesToKill = [head, torso, rUpper, rFore, rHand, lUpper].filter(Boolean);
+                if (bonesToKill.length > 0) {
+                    gsap.killTweensOf(bonesToKill.map(b => b.rotation));
+                }
+
+                if (name === 'wave' && rUpper && rFore && rHand && vrmBaseRotations) {
+                    const ub = vrmBaseRotations[VRMHumanBoneName.RightUpperArm];
+                    const fb = vrmBaseRotations[VRMHumanBoneName.RightLowerArm];
+                    const hb = vrmBaseRotations[VRMHumanBoneName.RightHand];
+                    
+                    if (ub && fb && hb) {
+                        window.isGesturing = true;
+                        const tl = gsap.timeline();
+                        tl.eventCallback('onComplete', () => { window.isGesturing = false; });
+                        // Raise arm
+                        tl.to(rUpper.rotation, { z: ub.z - 1.2, x: ub.x - 0.4, duration: 0.4, ease: "power2.out" }, 0);
+                        tl.to(rFore.rotation, { x: fb.x - 0.4, duration: 0.4, ease: "power2.out" }, 0);
+                        
+                        // Wave back and forth
+                        tl.to(rHand.rotation, { y: hb.y + 0.6, duration: 0.2, ease: "sine.inOut", yoyo: true, repeat: 5 }, 0.2);
+                        
+                        // Return to base
+                        tl.to([rUpper.rotation, rFore.rotation, rHand.rotation], {
+                            x: (i, tgt) => i===0 ? ub.x : (i===1 ? fb.x : hb.x),
+                            y: (i, tgt) => i===0 ? ub.y : (i===1 ? fb.y : hb.y),
+                            z: (i, tgt) => i===0 ? ub.z : (i===1 ? fb.z : hb.z),
+                            duration: 0.5, ease: "power2.inOut"
+                        });
+                    }
+                }
+                else if (name === 'nod' && head && vrmBaseRotations) {
+                    const hb = vrmBaseRotations[VRMHumanBoneName.Head] || vrmBaseRotations[VRMHumanBoneName.Neck];
+                    if (hb) {
+                        window.isGesturing = true;
+                        gsap.to(head.rotation, {
+                            x: hb.x - 0.25,
+                            duration: 0.15,
+                            ease: "sine.inOut",
+                            yoyo: true,
+                            repeat: 3,
+                            onComplete: () => gsap.to(head.rotation, {x: hb.x, duration: 0.2, onComplete: () => window.isGesturing=false})
+                        });
+                    }
+                }
+                else if (name === 'shake' && head && vrmBaseRotations) {
+                    const hb = vrmBaseRotations[VRMHumanBoneName.Head] || vrmBaseRotations[VRMHumanBoneName.Neck];
+                    if (hb) {
+                        window.isGesturing = true;
+                        gsap.to(head.rotation, {
+                            y: hb.y + 0.35,
+                            duration: 0.15,
+                            ease: "sine.inOut",
+                            yoyo: true,
+                            repeat: 3,
+                            onComplete: () => gsap.to(head.rotation, {y: hb.y, duration: 0.2, onComplete: () => window.isGesturing=false})
+                        });
+                    }
+                }
+                else if (name === 'shrug' && torso && lUpper && rUpper && vrmBaseRotations) {
+                    const tb = vrmBaseRotations[VRMHumanBoneName.Chest] || vrmBaseRotations[VRMHumanBoneName.Spine];
+                    const lub = vrmBaseRotations[VRMHumanBoneName.LeftUpperArm];
+                    const rub = vrmBaseRotations[VRMHumanBoneName.RightUpperArm];
+                    
+                    if (tb && lub && rub) {
+                        window.isGesturing = true;
+                        const tl = gsap.timeline();
+                        tl.eventCallback('onComplete', () => { window.isGesturing = false; });
+                        tl.to(torso.rotation, { x: tb.x - 0.15, duration: 0.3, ease: "power1.inOut" }, 0);
+                        tl.to(lUpper.rotation, { z: lub.z + 0.4, duration: 0.3, ease: "power1.inOut" }, 0);
+                        tl.to(rUpper.rotation, { z: rub.z - 0.4, duration: 0.3, ease: "power1.inOut" }, 0);
+                        
+                        tl.to([torso.rotation, lUpper.rotation, rUpper.rotation], {
+                            x: (i) => i===0 ? tb.x : (i===1 ? lub.x : rub.x),
+                            z: (i) => i===0 ? tb.z : (i===1 ? lub.z : rub.z),
+                            duration: 0.4, ease: "power1.inOut", delay: 0.5
+                        });
+                    }
+                }
+
+                // We don't use 'activeGesture' variable for standard looped math anymore. 
+                // We rely on GSAP tweens overlaid on VRM.
+                return;
+            }
+
+            if (ev.type === 'expression') {
+                const id = ev.id || null;
+                if (id && id === lastExpressionId) return;
+                lastExpressionId = id;
+
+                const name = String(ev.name || '').toLowerCase();
+                if (!name) return;
+
+                const allowed = new Set(['happy', 'sad', 'angry', 'relaxed', 'surprised']);
+                if (!allowed.has(name)) return;
+
+                activeExpression = {
+                    name,
+                    id,
+                    value: Math.max(0, Math.min(1, Number(ev.value ?? 0.6))),
+                    startS: performance.now() * 0.001,
+                    durationS: Math.max(0.6, Number(ev.duration || 1.6))
+                };
+            }
+        }
+
+        const applyVrmRelaxedPose = () => {
+            // VRMs often load in a T/A-pose when no animation is applied.
+            // Apply a light, generic relaxed pose so it looks natural.
+            // If arms still look like a "V", increase RELAX.upperArmZ.
+            // If arms clip into the torso, decrease it.
+            const RELAX = {
+                // radians
+                upperArmZ: 1.15,
+                upperArmX: -0.15,
+                lowerArmZ: 0.20,
+                lowerArmX: -0.10,
+                handZ: 0.05,
+            };
+            const lUpper = getVrmBone(VRMHumanBoneName.LeftUpperArm);
+            const rUpper = getVrmBone(VRMHumanBoneName.RightUpperArm);
+            const lFore = getVrmBone(VRMHumanBoneName.LeftLowerArm);
+            const rFore = getVrmBone(VRMHumanBoneName.RightLowerArm);
+            const lHand = getVrmBone(VRMHumanBoneName.LeftHand);
+            const rHand = getVrmBone(VRMHumanBoneName.RightHand);
+
+            // These offsets are intentionally small-ish and symmetric.
+            // Some avatars use different bone orientations; tweak RELAX if needed.
+            if (lUpper) {
+                lUpper.rotation.z += RELAX.upperArmZ;
+                lUpper.rotation.x += RELAX.upperArmX;
+            }
+            if (rUpper) {
+                rUpper.rotation.z += -RELAX.upperArmZ;
+                rUpper.rotation.x += RELAX.upperArmX;
+            }
+            if (lFore) {
+                lFore.rotation.z += RELAX.lowerArmZ;
+                lFore.rotation.x += RELAX.lowerArmX;
+            }
+            if (rFore) {
+                rFore.rotation.z += -RELAX.lowerArmZ;
+                rFore.rotation.x += RELAX.lowerArmX;
+            }
+            if (lHand) {
+                lHand.rotation.z += RELAX.handZ;
+            }
+            if (rHand) {
+                rHand.rotation.z += -RELAX.handZ;
+            }
+
+            try { vrm.scene.updateWorldMatrix(true, true); } catch {}
+        }
+
+        const setupVrm = async () => {
+            threeRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+            threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            threeRenderer.setSize(window.innerWidth, window.innerHeight, false);
+            threeRenderer.setClearColor(0x222222, 1);
+            // Correct color output for VRM materials/textures
+            threeRenderer.outputColorSpace = THREE.SRGBColorSpace;
+            threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+            threeRenderer.toneMappingExposure = 1.0;
+
+            threeRenderer.xr.enabled = true;
+            document.body.appendChild(VRButton.createButton(threeRenderer));
+
+            threeScene = new THREE.Scene();
+
+            // Setup starry background
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 0.05});
+            const starsVertices = [];
+            for(let i=0; i<5000; i++) {
+                const x = (Math.random() - 0.5) * 50;
+                const y = (Math.random() - 0.5) * 50;
+                const z = (Math.random() - 0.5) * 50;
+                starsVertices.push(x, y, z);
+            }
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            threeScene.add(new THREE.Points(starsGeometry, starsMaterial));
+
+            threeCamera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.01, 1000);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+            const key = new THREE.DirectionalLight(0xffffff, 1.2);
+            key.position.set(1, 2, 3);
+            threeScene.add(ambient);
+            threeScene.add(key);
+
+            // === AUTHENTIC MOON ENVIRONMENT ===
+            threeScene.fog = new THREE.FogExp2(0x03050d, 0.015);
+            threeScene.background = new THREE.Color(0x03050d);
+
+            // Sun — harsh single-source white light (no atmosphere = no soft light)
+            const sunLight = new THREE.DirectionalLight(0xfff8f0, 3.0);
+            sunLight.position.set(-12, 20, -20);
+            threeScene.add(sunLight);
+            // Very faint earthshine from behind camera
+            const earthshine = new THREE.DirectionalLight(0x446688, 0.15);
+            earthshine.position.set(0, 5, 10);
+            threeScene.add(earthshine);
+
+            // Moon regolith floor — authentic pale ash grey
+            const floorGeo = new THREE.PlaneGeometry(600, 600, 1, 1);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0xb0ae9f,   // Real moon regolith — pale ash grey
+                roughness: 1.0,
+                metalness: 0.0
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            threeScene.add(floor);
+
+            // Impact craters on the floor (sunken rings)
+            const craterRimMat = new THREE.MeshStandardMaterial({ color: 0x8a8880, roughness: 1.0 });
+            const craterFloorMat = new THREE.MeshStandardMaterial({ color: 0x6e6c62, roughness: 1.0 });
+            const craterData = [
+                { x: 6, z: -8, r: 1.2 }, { x: -10, z: -5, r: 0.7 },
+                { x: 14, z: 3, r: 2.5 }, { x: -18, z: 10, r: 1.8 },
+                { x: 3, z: 15, r: 0.5 }, { x: -6, z: -14, r: 3.0 },
+                { x: 22, z: -12, r: 1.0 }, { x: -25, z: -8, r: 2.0 },
+            ];
+            craterData.forEach(c => {
+                // Rim ring
+                const rimGeo = new THREE.TorusGeometry(c.r, c.r * 0.22, 8, 32);
+                const rim = new THREE.Mesh(rimGeo, craterRimMat);
+                rim.rotation.x = -Math.PI / 2;
+                rim.position.set(c.x, 0.02, c.z);
+                threeScene.add(rim);
+                // Dark floor of crater
+                const cFloorGeo = new THREE.CircleGeometry(c.r * 0.9, 24);
+                const cFloor = new THREE.Mesh(cFloorGeo, craterFloorMat);
+                cFloor.rotation.x = -Math.PI / 2;
+                cFloor.position.set(c.x, -0.05, c.z);
+                threeScene.add(cFloor);
+            });
+
+            // Distant crater rim — jagged mountain ring on the horizon
+            const mountainMat = new THREE.MeshStandardMaterial({ color: 0x7a7868, roughness: 1.0 });
+            const numPeaks = 36;
+            for (let i = 0; i < numPeaks; i++) {
+                const angle = (i / numPeaks) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
+                const radius = 90 + Math.random() * 40;
+                const height = 8 + Math.random() * 18;
+                const width = 8 + Math.random() * 24;
+                // Stack 2-3 cones to get natural ridge shapes
+                for (let j = 0; j < 2; j++) {
+                    const peakGeo = new THREE.ConeGeometry(width * (0.5 + j*0.35), height * (1.0 - j*0.4), 6 + Math.floor(Math.random()*4));
+                    const peak = new THREE.Mesh(peakGeo, mountainMat);
+                    peak.position.set(
+                        Math.cos(angle) * (radius + j * 4), height * (0.3 - j * 0.1),
+                        Math.sin(angle) * (radius + j * 4)
+                    );
+                    peak.rotation.y = Math.random() * Math.PI;
+                    peak.scale.set(1, 0.7 + Math.random() * 0.6, 1);
+                    threeScene.add(peak);
+                }
+            }
+
+            // Foreground boulders — varied sizes and shapes
+            const boulderColors = [0x8a8878, 0x6e6c60, 0x9a9888];
+            for (let i = 0; i < 55; i++) {
+                const r = 1.5 + Math.random() * 22;
+                const a = Math.random() * Math.PI * 2;
+                // Skip center zone (character stands there)
+                if (r < 1.2) continue;
+                const h = 0.04 + Math.random() * 0.35;
+                const bGeo = new THREE.SphereGeometry(h, 4 + Math.floor(Math.random()*4), 3);
+                const bMat = new THREE.MeshStandardMaterial({ 
+                    color: boulderColors[Math.floor(Math.random()*3)], roughness: 1.0 
+                });
+                const rock = new THREE.Mesh(bGeo, bMat);
+                rock.position.set(Math.cos(a)*r, h * 0.5, Math.sin(a)*r);
+                rock.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                rock.scale.set(1 + Math.random()*0.8, 0.5 + Math.random()*0.7, 1 + Math.random()*0.8);
+                threeScene.add(rock);
+            }
+
+            // EARTH in the sky — the iconic Apollo view!
+            const earthGeo = new THREE.SphereGeometry(8, 48, 48);
+            const earthCanvas = document.createElement('canvas');
+            earthCanvas.width = 512; earthCanvas.height = 256;
+            const ec = earthCanvas.getContext('2d');
+            // Ocean base
+            const oceanGrad = ec.createLinearGradient(0, 0, 512, 256);
+            oceanGrad.addColorStop(0, '#0a2a6e'); oceanGrad.addColorStop(1, '#0d3d8f');
+            ec.fillStyle = oceanGrad; ec.fillRect(0, 0, 512, 256);
+            // Continents
+            ec.fillStyle = '#2d6e2a';
+            [[80,80,55,40],[180,100,80,55],[290,110,60,45],[120,140,40,30],[350,80,35,25],[200,50,45,30]].forEach(([x,y,w,h]) => {
+                ec.beginPath(); ec.ellipse(x,y,w,h,Math.random(),0,Math.PI*2); ec.fill();
+            });
+            // Clouds
+            ec.fillStyle = 'rgba(255,255,255,0.6)';
+            [[60,60,70,18],[200,80,90,22],[350,100,65,20],[100,160,80,15],[280,50,75,18]].forEach(([x,y,w,h]) => {
+                ec.beginPath(); ec.ellipse(x,y,w,h,0,0,Math.PI*2); ec.fill();
+            });
+            const earthTexture = new THREE.CanvasTexture(earthCanvas);
+            const earthMat = new THREE.MeshStandardMaterial({ map: earthTexture, roughness: 0.6, metalness: 0.1 });
+            const earth = new THREE.Mesh(earthGeo, earthMat);
+            // Position Earth upper-right in the sky, far away
+            earth.position.set(25, 35, -80);
+            earth.rotation.z = 0.4; // Slight tilt like real Earth view from Moon
+            threeScene.add(earth);
+            // Slow Earth rotation
+            window._earthMesh = earth;
+
+            // Create 3D Menu
+            window.gameMenu = new THREE.Group();
+            // Position slightly higher (eye level) to fit all 5 options comfortably
+            window.gameMenu.position.set(0.6, 1.2, 0.1); 
+            // Angle it slightly towards the user
+            window.gameMenu.rotation.y = -0.35;
+            // Scale it down heavily so the text fits gracefully on screen
+            window.gameMenu.scale.set(0.5, 0.5, 0.5);
+            
+            function createMenuButton(text, yPos, id) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.clearRect(0, 0, 512, 128);
+                
+                // Draw glass background with sci-fi angled corners
+                ctx.fillStyle = 'rgba(10, 15, 25, 0.4)';
+                ctx.beginPath();
+                ctx.moveTo(40, 10);
+                ctx.lineTo(472, 10);
+                ctx.quadraticCurveTo(492, 10, 492, 30);
+                ctx.lineTo(492, 98);
+                ctx.quadraticCurveTo(492, 118, 472, 118);
+                ctx.lineTo(40, 118);
+                ctx.quadraticCurveTo(20, 118, 20, 98);
+                ctx.lineTo(20, 30);
+                ctx.quadraticCurveTo(20, 10, 40, 10);
+                ctx.closePath();
+                ctx.fill();
+
+                // Holographic Glowing Border
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(0, 255, 204, 0.8)';
+                ctx.shadowColor = 'rgba(0, 255, 204, 0.9)';
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+
+                // Typography
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 8;
+                ctx.font = '600 32px "Outfit", system-ui, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '3px';
+                ctx.fillText(text.toUpperCase(), 256, 66);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const mat = new THREE.MeshBasicMaterial({
+                    map: texture, 
+                    transparent: true,
+                    opacity: 0.85,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const geo = new THREE.PlaneGeometry(0.85, 0.2125);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.y = yPos;
+                mesh.userData = { id: id };
+                return mesh;
+            }
+            
+            const btn1 = createMenuButton("Let's Chat", 0.6, "chat");
+            const btn2 = createMenuButton("Discover Moon", 0.3, "moon");
+            const btn3 = createMenuButton("Discover Solar System", 0.0, "solar");
+            const btn4 = createMenuButton("Discover ISS", -0.3, "iss");
+            const btn5 = createMenuButton("Discover JWST", -0.6, "jwst");
+            window.gameMenu.add(btn1, btn2, btn3, btn4, btn5);
+            
+            // Initially hidden until "Start" is pressed
+            window.gameMenu.visible = false;
+            threeScene.add(window.gameMenu);
+
+            // Create Back Menu
+            window.backMenu = new THREE.Group();
+            window.backMenu.position.copy(window.gameMenu.position);
+            window.backMenu.rotation.copy(window.gameMenu.rotation);
+            window.backMenu.scale.copy(window.gameMenu.scale);
+
+            const btnBack = createMenuButton("Back to Menu", 0.0, "main");
+            window.backMenu.add(btnBack);
+            window.backMenu.visible = false;
+            threeScene.add(window.backMenu);
+
+            const getVisibleMenuChildren = () => {
+                const children = [];
+                if (window.gameMenu && window.gameMenu.visible) children.push(...window.gameMenu.children);
+                if (window.backMenu && window.backMenu.visible) children.push(...window.backMenu.children);
+                return children;
+            };
+
+            // Raycaster for mouse
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            
+            // Mouse Move for Hover Effects
+            window.addEventListener('mousemove', (e) => {
+                const targets = getVisibleMenuChildren();
+                if(targets.length === 0) return;
+                
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, threeCamera);
+                
+                // Reset scale and opacity
+                targets.forEach(t => { 
+                    t.scale.set(1, 1, 1); 
+                    if (t.material) t.material.opacity = 0.85; 
+                });
+                
+                const intersects = raycaster.intersectObjects(targets);
+                if(intersects.length > 0) {
+                    const obj = intersects[0].object;
+                    // Pop animation/glow highlight
+                    obj.scale.set(1.1, 1.1, 1.1);
+                    if (obj.material) obj.material.opacity = 1.0;
+                    document.body.style.cursor = 'pointer';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            });
+
+            window.addEventListener('click', (e) => {
+                const targets = getVisibleMenuChildren();
+                if(targets.length === 0) return;
+                // Ignore click if it's over the start Overlay or VR button
+                if(e.target.id === 'startBtn') return;
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, threeCamera);
+                
+                const intersects = raycaster.intersectObjects(targets);
+                if(intersects.length > 0) {
+                    const id = intersects[0].object.userData.id;
+                    if (window.handleMenuSelection) window.handleMenuSelection(id);
+                }
+            });
+
+            // VR Controllers raycasting
+            const controller1 = threeRenderer.xr.getController(0);
+            const controller2 = threeRenderer.xr.getController(1);
+            
+            const buildController = (controller) => {
+                threeScene.add(controller);
+                const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-2)]);
+                const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color: 0xffffff}));
+                line.name = "line";
+                controller.add(line);
+                
+                controller.addEventListener('select', () => {
+                    const targets = getVisibleMenuChildren();
+                    if(targets.length === 0) return;
+                    
+                    const mat = new THREE.Matrix4().identity().extractRotation(controller.matrixWorld);
+                    const rayc = new THREE.Raycaster();
+                    rayc.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                    rayc.ray.direction.set(0,0,-1).applyMatrix4(mat);
+                    
+                    const intersects = rayc.intersectObjects(targets);
+                    if(intersects.length > 0) {
+                        const id = intersects[0].object.userData.id;
+                        if (window.handleMenuSelection) window.handleMenuSelection(id);
+                    }
+                });
+            };
+            buildController(controller1);
+            buildController(controller2);
+
+            const loader = new GLTFLoader();
+            loader.register((parser) => new VRMLoaderPlugin(parser));
+
+            const gltf = await loader.loadAsync(modelUrl);
+            VRMUtils.removeUnnecessaryVertices(gltf.scene);
+            VRMUtils.removeUnnecessaryJoints(gltf.scene);
+
+            vrm = gltf.userData.vrm;
+            if (!vrm) {
+                throw new Error('VRM loader did not produce a vrm instance');
+            }
+
+            // VRM0 avatars usually face -Z; rotate so it faces the camera
+            try { VRMUtils.rotateVRM0(vrm); } catch {}
+
+            // Apply a nicer base pose (avoid T-pose)
+            applyVrmRelaxedPose();
+
+            // Place VRM in the scene
+            threeScene.add(vrm.scene);
+            document.getElementById('loading').style.display = 'none';
+
+            // Fit camera using the VRM scene bounds
+            fitGlbToView(vrm.scene, threeCamera);
+
+            // Orbit controls so you can rotate around
+            window.controls = new OrbitControls(threeCamera, threeRenderer.domElement);
+            window.controls.target.set(0, 0.8, 0); // Focus on avatar's upper body
+            window.controls.enableDamping = true;
+            window.controls.dampingFactor = 0.05;
+            window.controls.enablePan = false; // Prevents "character disappearing" on middle-click
+            window.controls.minDistance = 0.5; // Prevent zooming inside
+            window.controls.maxDistance = 6.0; // Prevent zooming too far out
+
+            // Cache base rotations so we animate as offsets
+            vrmBaseRotations = {};
+            const boneKeys = [
+                VRMHumanBoneName.Hips,
+                VRMHumanBoneName.Spine,
+                VRMHumanBoneName.Chest,
+                VRMHumanBoneName.Neck,
+                VRMHumanBoneName.Head,
+                VRMHumanBoneName.LeftUpperArm,
+                VRMHumanBoneName.RightUpperArm,
+                VRMHumanBoneName.LeftLowerArm,
+                VRMHumanBoneName.RightLowerArm,
+                VRMHumanBoneName.LeftHand,
+                VRMHumanBoneName.RightHand,
+                VRMHumanBoneName.LeftUpperLeg,
+                VRMHumanBoneName.RightUpperLeg,
+            ];
+            for (const k of boneKeys) {
+                const b = getVrmBone(k);
+                if (b) {
+                    vrmBaseRotations[k] = { x: b.rotation.x, y: b.rotation.y, z: b.rotation.z };
+                }
+            }
+
+            // Mouth control (three-vrm v2): expressions (VRM0/VRM1 are unified as "expressionManager")
+            vrmMouthMode = (vrm.expressionManager && typeof vrm.expressionManager.setValue === 'function') ? 'expression' : null;
+            paramEl.textContent = vrmMouthMode ? 'vrm:expression:aa' : '(no mouth controller)';
+
+            // Rig + material debug
+            const info = {
+                meshes: 0,
+                skinned: 0,
+                bones: 0,
+                morphs: 0,
+            };
+            let materialCount = 0;
+            let materialWithMapCount = 0;
+            let mtoonCount = 0;
+            vrm.scene.traverse((obj) => {
+                if (obj.isBone) info.bones++;
+                if (obj.isMesh) {
+                    info.meshes++;
+                    if (obj.isSkinnedMesh) info.skinned++;
+                    if (obj.morphTargetDictionary) info.morphs += Object.keys(obj.morphTargetDictionary).length;
+
+                    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                    for (const mat of mats) {
+                        if (!mat) continue;
+                        materialCount++;
+                        if (mat.map) materialWithMapCount++;
+                        if (mat.type === 'MToonMaterial') mtoonCount++;
+                    }
+                }
+            });
+            rigEl.textContent = `VRM0 meshes=${info.meshes}, skinned=${info.skinned}, bones=${info.bones}, morphs=${info.morphs}, mats=${materialCount}, maps=${materialWithMapCount}, mtoon=${mtoonCount}`;
+
+            const onResize = () => {
+                threeRenderer.setSize(window.innerWidth, window.innerHeight, false);
+                threeCamera.aspect = window.innerWidth / window.innerHeight;
+                threeCamera.updateProjectionMatrix();
+                if (vrm && vrm.scene) {
+                    fitGlbToView(vrm.scene, threeCamera);
+                }
+            };
+            window.addEventListener('resize', onResize);
+
+            const animate = () => {
+
+                // Smooth speech level (fast up, slower down)
+                const vRaw = mouthValue;
+                if (vRaw > speechLevel) {
+                    speechLevel = speechLevel * 0.75 + vRaw * 0.25;
+                } else {
+                    speechLevel = speechLevel * 0.88 + vRaw * 0.12;
+                }
+                speechEl.textContent = speechLevel.toFixed(3);
+
+                const t = performance.now() * 0.001;
+                const s = Math.max(0, Math.min(1, speechLevel));
+                const wave = Math.sin(t * 6.0);
+                const waveSlow = Math.sin(t * 2.0);
+
+                // Mouth (VRM expressions)
+                if (vrmMouthMode === 'expression') {
+                    try {
+                        // VRM0/VRM1 use the same preset names here (aa/ih/ou/ee/oh)
+                        vrm.expressionManager.setValue(VRMExpressionPresetName.Aa, s);
+                    } catch {}
+                }
+
+                // Optional facial expression overlay (happy/sad/etc)
+                if (vrmMouthMode === 'expression' && activeExpression) {
+                    const nowS = performance.now() * 0.001;
+                    const u = (nowS - activeExpression.startS) / Math.max(0.001, activeExpression.durationS);
+                    if (u >= 1.0) {
+                        // fade out
+                        activeExpression = null;
+                    } else {
+                        // bell-ish envelope
+                        const env = Math.sin(Math.min(1.0, u) * Math.PI);
+                        const v = Math.max(0, Math.min(1, activeExpression.value * env));
+
+                        const preset = {
+                            happy: VRMExpressionPresetName.Happy,
+                            sad: VRMExpressionPresetName.Sad,
+                            angry: VRMExpressionPresetName.Angry,
+                            relaxed: VRMExpressionPresetName.Relaxed,
+                            surprised: VRMExpressionPresetName.Surprised,
+                        }[activeExpression.name];
+
+                        try {
+                            if (preset) vrm.expressionManager.setValue(preset, v);
+                        } catch {}
+                    }
+                }
+
+                // --- Human Motion Physics Engine ---
+                // Goal: "human" movement without mocap by combining:
+                // - mean-reverting random targets (Ornstein-Uhlenbeck)
+                // - physically-plausible 2nd-order dynamics (mass-spring-damper)
+                // - joint limits to avoid broken poses
+                if (!window.humanMotion) {
+                    window.humanMotion = {
+                        targets: {},
+                        states: {},
+                        _spare: null,
+                        randn() {
+                            if (this._spare != null) {
+                                const v = this._spare;
+                                this._spare = null;
+                                return v;
+                            }
+                            let u = 0;
+                            let v = 0;
+                            while (u === 0) u = Math.random();
+                            while (v === 0) v = Math.random();
+                            const mag = Math.sqrt(-2.0 * Math.log(u));
+                            const z0 = mag * Math.cos(2.0 * Math.PI * v);
+                            const z1 = mag * Math.sin(2.0 * Math.PI * v);
+                            this._spare = z1;
+                            return z0;
+                        },
+                    };
+                }
+                const HM = window.humanMotion;
+
+                // One delta used for BOTH physics and vrm.update()
+                const dt = Math.min(0.05, Math.max(0.001, clock.getDelta()));
+
+                // Tuning knobs (adjust these first)
+                const PHYS = {
+                    hips: {
+                        fHz: 0.8,
+                        zeta: 0.95,
+                        ouTheta: 0.8,
+                        ouSigma: { x: 0.010, y: 0.015, z: 0.010 },
+                        limits: { x: [-0.05, 0.05], y: [-0.10, 0.10], z: [-0.05, 0.05] },
+                    },
+                    leg: {
+                        fHz: 0.9,
+                        zeta: 0.98,
+                        ouTheta: 1.0,
+                        ouSigma: { x: 0.005, y: 0.005, z: 0.005 },
+                        limits: { x: [-0.05, 0.05], y: [-0.05, 0.05], z: [-0.05, 0.05] },
+                    },
+                    torso: {
+                        fHz: 1.1,
+                        zeta: 0.85,
+                        ouTheta: 0.9,
+                        ouSigma: { x: 0.035, y: 0.030, z: 0.025 },
+                        limits: { x: [-0.18, 0.18], y: [-0.30, 0.30], z: [-0.10, 0.10] },
+                    },
+                    head: {
+                        fHz: 1.8,
+                        zeta: 0.80,
+                        ouTheta: 1.2,
+                        ouSigma: { x: 0.055, y: 0.050, z: 0.030 },
+                        limits: { x: [-0.35, 0.35], y: [-0.55, 0.55], z: [-0.25, 0.25] },
+                    },
+                    upperArm: {
+                        fHz: 0.95,
+                        zeta: 0.98,
+                        ouTheta: 1.3,
+                        ouSigma: { x: 0.006, y: 0.006, z: 0.004 },
+                        limits: { x: [-0.55, 0.22], y: [-0.28, 0.28], z: [-0.25, 0.25] },
+                    },
+                    lowerArm: {
+                        fHz: 1.10,
+                        zeta: 0.95,
+                        ouTheta: 1.3,
+                        ouSigma: { x: 0.008, y: 0.008, z: 0.008 },
+                        limits: { x: [-0.90, 0.45], y: [-0.50, 0.50], z: [-0.50, 0.50] },
+                    },
+                };
+
+                const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+                const ouStep = (x, theta, sigma) => {
+                    // mean-reverting around 0
+                    return x + (-theta * x) * dt + (sigma * Math.sqrt(dt) * HM.randn());
+                };
+                const ensure = (key, base) => {
+                    if (!HM.targets[key]) HM.targets[key] = { ox: 0, oy: 0, oz: 0 };
+                    if (!HM.states[key]) HM.states[key] = { x: base.x, y: base.y, z: base.z, vx: 0, vy: 0, vz: 0 };
+                };
+                const stepSecondOrder = (state, target, fHz, zeta) => {
+                    // y'' + 2*zeta*w*y' + w^2*y = w^2*x
+                    const w = 2.0 * Math.PI * fHz;
+                    const k = w * w;
+                    const c = 2.0 * zeta * w;
+
+                    state.vx += (k * (target.x - state.x) - c * state.vx) * dt;
+                    state.vy += (k * (target.y - state.y) - c * state.vy) * dt;
+                    state.vz += (k * (target.z - state.z) - c * state.vz) * dt;
+
+                    state.x += state.vx * dt;
+                    state.y += state.vy * dt;
+                    state.z += state.vz * dt;
+                };
+
+                const driveBone = (boneEnum, fallbackEnum, opts) => {
+                    const bone = getVrmBone(boneEnum) || (fallbackEnum ? getVrmBone(fallbackEnum) : null);
+                    if (!bone || !vrmBaseRotations) return;
+
+                    const key = bone === getVrmBone(boneEnum) ? boneEnum : fallbackEnum;
+                    if (!key || !vrmBaseRotations[key]) return;
+                    const base = vrmBaseRotations[key];
+                    ensure(key, base);
+
+                    const tgt = HM.targets[key];
+                    const st = HM.states[key];
+
+                    // OU target offsets (slow wandering)
+                    tgt.ox = ouStep(tgt.ox, opts.ouTheta, opts.ouSigmaX);
+                    tgt.oy = ouStep(tgt.oy, opts.ouTheta, opts.ouSigmaY);
+                    tgt.oz = ouStep(tgt.oz, opts.ouTheta, opts.ouSigmaZ);
+
+                    const target = {
+                        x: base.x + opts.baseOffset.x + tgt.ox,
+                        y: base.y + opts.baseOffset.y + tgt.oy,
+                        z: base.z + opts.baseOffset.z + tgt.oz,
+                    };
+
+                    // 2nd-order dynamics for weight / inertia
+                    stepSecondOrder(st, target, opts.fHz, opts.zeta);
+
+                    // Joint limits around base
+                    if (opts.limits) {
+                        st.x = base.x + clamp(st.x - base.x, opts.limits.x[0], opts.limits.x[1]);
+                        st.y = base.y + clamp(st.y - base.y, opts.limits.y[0], opts.limits.y[1]);
+                        st.z = base.z + clamp(st.z - base.z, opts.limits.z[0], opts.limits.z[1]);
+                    }
+
+                    bone.rotation.x = st.x;
+                    bone.rotation.y = st.y;
+                    bone.rotation.z = st.z;
+                };
+
+                if (!window.isGesturing) {
+                    // Independent idle movement even when silent
+                    const talk = s;
+                    const breathe = 0.012 + 0.010 * (0.5 + 0.5 * Math.sin(t * 1.2));
+                    const micro = 0.008;
+
+                    // Hips: very slow waifu-like swaying
+                    driveBone(VRMHumanBoneName.Hips, null, {
+                        baseOffset: {
+                            x: (0.015 * Math.sin(t * 0.8)),
+                            y: (0.010 * Math.sin(t * 0.6)),
+                            z: (0.005 * Math.sin(t * 1.0)),
+                        },
+                        fHz: PHYS.hips.fHz, zeta: PHYS.hips.zeta,
+                        ouTheta: PHYS.hips.ouTheta, ouSigmaX: PHYS.hips.ouSigma.x, ouSigmaY: PHYS.hips.ouSigma.y, ouSigmaZ: PHYS.hips.ouSigma.z,
+                        limits: PHYS.hips.limits,
+                    });
+
+                    // Legs: slight outward rotation/shifting weight
+                    driveBone(VRMHumanBoneName.LeftUpperLeg, null, {
+                        baseOffset: { x: 0, y: 0, z: (0.015 * Math.sin(t * 0.7)) },
+                        fHz: PHYS.leg.fHz, zeta: PHYS.leg.zeta,
+                        ouTheta: PHYS.leg.ouTheta, ouSigmaX: PHYS.leg.ouSigma.x, ouSigmaY: PHYS.leg.ouSigma.y, ouSigmaZ: PHYS.leg.ouSigma.z,
+                        limits: PHYS.leg.limits,
+                    });
+                    driveBone(VRMHumanBoneName.RightUpperLeg, null, {
+                        baseOffset: { x: 0, y: 0, z: -(0.015 * Math.sin(t * 0.7)) },
+                        fHz: PHYS.leg.fHz, zeta: PHYS.leg.zeta,
+                        ouTheta: PHYS.leg.ouTheta, ouSigmaX: PHYS.leg.ouSigma.x, ouSigmaY: PHYS.leg.ouSigma.y, ouSigmaZ: PHYS.leg.ouSigma.z,
+                        limits: PHYS.leg.limits,
+                    });
+
+                    // Torso: slow weight shifts + breathing
+                    driveBone(VRMHumanBoneName.Chest, VRMHumanBoneName.Spine, {
+                        baseOffset: {
+                            x: (breathe * Math.sin(t * 1.3)) + (0.04 * talk * Math.sin(t * 3.1)),
+                            y: (micro * Math.sin(t * 0.9)) + (0.03 * talk * Math.sin(t * 2.4)),
+                            z: (micro * Math.sin(t * 0.7)),
+                        },
+                        fHz: PHYS.torso.fHz,
+                        zeta: PHYS.torso.zeta,
+                        ouTheta: PHYS.torso.ouTheta,
+                        ouSigmaX: PHYS.torso.ouSigma.x,
+                        ouSigmaY: PHYS.torso.ouSigma.y,
+                        ouSigmaZ: PHYS.torso.ouSigma.z,
+                        limits: PHYS.torso.limits,
+                    });
+
+                    // Head: follows more, slightly snappier
+                    driveBone(VRMHumanBoneName.Head, VRMHumanBoneName.Neck, {
+                        baseOffset: {
+                            x: (micro * Math.sin(t * 1.6)) + (0.05 * talk * Math.sin(t * 2.9)),
+                            y: (micro * Math.sin(t * 1.1)) + (0.04 * talk * Math.sin(t * 3.3)),
+                            z: (micro * Math.sin(t * 0.8)),
+                        },
+                        fHz: PHYS.head.fHz,
+                        zeta: PHYS.head.zeta,
+                        ouTheta: PHYS.head.ouTheta,
+                        ouSigmaX: PHYS.head.ouSigma.x,
+                        ouSigmaY: PHYS.head.ouSigma.y,
+                        ouSigmaZ: PHYS.head.ouSigma.z,
+                        limits: PHYS.head.limits,
+                    });
+
+                    // Arms: keep them relaxed; avoid "V" flare by tightening z-range (abduction)
+                    driveBone(VRMHumanBoneName.LeftUpperArm, null, {
+                        baseOffset: {
+                            x: (-0.08 * talk) + (micro * Math.sin(t * 0.75)),
+                            y: (0.020 * Math.sin(t * 0.70 + 0.7)) + (0.030 * talk * Math.sin(t * 1.7 + 0.3)),
+                            z: (0.010 * talk * Math.sin(t * 1.9)) + (0.006 * Math.sin(t * 0.95)),
+                        },
+                        fHz: PHYS.upperArm.fHz,
+                        zeta: PHYS.upperArm.zeta,
+                        ouTheta: PHYS.upperArm.ouTheta,
+                        ouSigmaX: PHYS.upperArm.ouSigma.x,
+                        ouSigmaY: PHYS.upperArm.ouSigma.y,
+                        ouSigmaZ: PHYS.upperArm.ouSigma.z,
+                        limits: PHYS.upperArm.limits,
+                    });
+                    driveBone(VRMHumanBoneName.RightUpperArm, null, {
+                        baseOffset: {
+                            x: (-0.08 * talk) + (micro * Math.sin(t * 0.80)),
+                            y: (-0.020 * Math.sin(t * 0.70 + 0.7)) + (-0.030 * talk * Math.sin(t * 1.7 + 0.3)),
+                            z: -(0.010 * talk * Math.sin(t * 1.9)) + (-0.006 * Math.sin(t * 0.95)),
+                        },
+                        fHz: PHYS.upperArm.fHz,
+                        zeta: PHYS.upperArm.zeta,
+                        ouTheta: PHYS.upperArm.ouTheta,
+                        ouSigmaX: PHYS.upperArm.ouSigma.x,
+                        ouSigmaY: PHYS.upperArm.ouSigma.y,
+                        ouSigmaZ: PHYS.upperArm.ouSigma.z,
+                        limits: PHYS.upperArm.limits,
+                    });
+
+                    driveBone(VRMHumanBoneName.LeftLowerArm, null, {
+                        baseOffset: {
+                            x: (-0.12 * talk * (0.6 + 0.4 * Math.sin(t * 4.2))),
+                            y: (0.018 * Math.sin(t * 0.95 + 1.2)) + (0.025 * talk * Math.sin(t * 3.0 + 0.9)),
+                            z: (0.010 * Math.sin(t * 0.85 + 0.2)),
+                        },
+                        fHz: PHYS.lowerArm.fHz,
+                        zeta: PHYS.lowerArm.zeta,
+                        ouTheta: PHYS.lowerArm.ouTheta,
+                        ouSigmaX: PHYS.lowerArm.ouSigma.x,
+                        ouSigmaY: PHYS.lowerArm.ouSigma.y,
+                        ouSigmaZ: PHYS.lowerArm.ouSigma.z,
+                        limits: PHYS.lowerArm.limits,
+                    });
+                    driveBone(VRMHumanBoneName.RightLowerArm, null, {
+                        baseOffset: {
+                            x: (-0.12 * talk * (0.6 + 0.4 * Math.sin(t * 4.2))),
+                            y: (-0.018 * Math.sin(t * 0.95 + 1.2)) + (-0.025 * talk * Math.sin(t * 3.0 + 0.9)),
+                            z: (-0.010 * Math.sin(t * 0.85 + 0.2)),
+                        },
+                        fHz: PHYS.lowerArm.fHz,
+                        zeta: PHYS.lowerArm.zeta,
+                        ouTheta: PHYS.lowerArm.ouTheta,
+                        ouSigmaX: PHYS.lowerArm.ouSigma.x,
+                        ouSigmaY: PHYS.lowerArm.ouSigma.y,
+                        ouSigmaZ: PHYS.lowerArm.ouSigma.z,
+                        limits: PHYS.lowerArm.limits,
+                    });
+                } else {
+                    // While GSAP is animating, keep physics state in sync to prevent snapping
+                    const syncKeys = [
+                        VRMHumanBoneName.Hips,
+                        VRMHumanBoneName.Chest, VRMHumanBoneName.Spine,
+                        VRMHumanBoneName.Head, VRMHumanBoneName.Neck,
+                        VRMHumanBoneName.LeftUpperArm, VRMHumanBoneName.RightUpperArm,
+                        VRMHumanBoneName.LeftLowerArm, VRMHumanBoneName.RightLowerArm,
+                        VRMHumanBoneName.LeftHand, VRMHumanBoneName.RightHand,
+                        VRMHumanBoneName.LeftUpperLeg, VRMHumanBoneName.RightUpperLeg
+                    ];
+                    syncKeys.forEach(k => {
+                        const b = getVrmBone(k);
+                        if (!b || !vrmBaseRotations || !vrmBaseRotations[k]) return;
+                        const base = vrmBaseRotations[k];
+                        ensure(k, base);
+                        const st = HM.states[k];
+                        st.x = b.rotation.x;
+                        st.y = b.rotation.y;
+                        st.z = b.rotation.z;
+                        st.vx = 0;
+                        st.vy = 0;
+                        st.vz = 0;
+                        HM.targets[k].ox = 0;
+                        HM.targets[k].oy = 0;
+                        HM.targets[k].oz = 0;
+                    });
+                }
+
+                // Update VRM internal state (springs, lookAt, etc.)
+                try { vrm.update(dt); } catch {}
+
+                if (window.controls) {
+                    window.controls.update();
+                }
+                
+                // Slowly rotate Earth
+                if (window._earthMesh) window._earthMesh.rotation.y += dt * 0.05;
+
+                if (typeof currentHologram !== 'undefined' && currentHologram) {
+                    currentHologram.rotation.y += dt * 0.5;
+                }
+                
+                // Holographic floating menu animation
+                if (window.gameMenu && window.gameMenu.visible) {
+                    window.gameMenu.position.y = 1.2 + Math.sin(t * 1.5) * 0.015;
+                }
+                if (window.backMenu && window.backMenu.visible) {
+                    window.backMenu.position.y = 1.2 + Math.sin(t * 1.5) * 0.015;
+                }
+
+                // Snap character Y to flat floor (Y=0) always
+                if (typeof vrm !== 'undefined' && vrm && vrm.scene) {
+                    // Only reset Y if not being gsap-animated (gsap handles X/Z for hologram views)
+                    if (!vrm.scene._gsapYActive) {
+                        vrm.scene.position.y = 0;
+                    }
+                }
+
+                threeRenderer.render(threeScene, threeCamera);
+            };
+
+            threeRenderer.setAnimationLoop(animate);
+        }
+
+        const initModel = async () => {
+            try {
+                const u = modelUrl.toLowerCase();
+                if (u.endsWith('.vrm')) {
+                    await setupVrm();
+                } else if (u.endsWith('.glb') || u.endsWith('.gltf')) {
+                    await setupGlb();
+                } else {
+                    await setupLive2d();
+                }
+            } catch (err) {
+                console.error('Failed to load model', err);
+                document.getElementById('loading').innerText = 'Failed to load model. Check console.';
+                paramEl.textContent = '(load failed)';
+                rigEl.textContent = '(load failed)';
+            }
+        }
+
+        initModel();
+
+        let ws = null;
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+
+        const b64ToBytes = (b64) => {
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return bytes;
+        };
+
+        let nextAudioTime = 0;
+        let analyserConnected = false;
+        const playWav = async (wav_b64) => {
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+                const bytes = b64ToBytes(wav_b64);
+                const audioData = await audioCtx.decodeAudioData(bytes.buffer);
+                const source = audioCtx.createBufferSource();
+                source.buffer = audioData;
+                source.connect(analyser);
+                // Only connect analyser -> destination once (avoid redundant graph connections)
+                if (!analyserConnected) {
+                    analyser.connect(audioCtx.destination);
+                    analyserConnected = true;
+                }
+                
+                const now = audioCtx.currentTime;
+                if (nextAudioTime < now) {
+                    // Start immediately with a tiny 5ms buffer to prevent click artifacts
+                    nextAudioTime = now + 0.005;
+                }
+                source.start(nextAudioTime);
+                nextAudioTime += audioData.duration;
+            } catch (err) {
+                console.error("Audio playback error:", err);
+                if (window.captionEl) window.captionEl.textContent = '[Audio Error] ' + err.message;
+            }
+        };
+
+        const connectWebSocket = () => {
+            const wsUrl = "ws://" + window.location.hostname + ":8765";
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("Connected to VR backend!");
+                wsStatusEl.textContent = 'connected';
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === "assistant_reply") {
+                        let text = msg.text || "";
+                        // Strip ALL bracket tags like [Happy], [Neutral], [Angry] etc.
+                        let actualText = text.replace(/\[.*?\]/g, '').trim();
+                        
+                        // Parse emotion tags for VRM expressions
+                        const emotionMatch = text.match(/\[(.*?)\]/);
+                        if (emotionMatch && vrm && vrm.expressionManager) {
+                            const emLabel = emotionMatch[1].toLowerCase();
+                            
+                            // Reset core expressions
+                            [VRMExpressionPresetName.neutral, VRMExpressionPresetName.happy, 
+                             VRMExpressionPresetName.surprised, VRMExpressionPresetName.angry, 
+                             VRMExpressionPresetName.relaxed].forEach(name => {
+                                vrm.expressionManager.setValue(name, 0.0);
+                            });
+                            
+                            let preset = VRMExpressionPresetName.neutral;
+                            if (emLabel === 'happy' || emLabel === 'smile') preset = VRMExpressionPresetName.happy;
+                            else if (emLabel === 'surprised') preset = VRMExpressionPresetName.surprised;
+                            else if (emLabel === 'angry') preset = VRMExpressionPresetName.angry;
+                            else if (emLabel === 'thinking' || emLabel === 'relaxed') preset = VRMExpressionPresetName.relaxed;
+                            
+                            vrm.expressionManager.setValue(preset, 1.0);
+                        }
+
+                        if (captionEl && actualText) captionEl.textContent = actualText;
+                        if (msg.wav_b64) {
+                            playWav(msg.wav_b64).catch(e => console.error("Audio playback error:", e));
+                        }
+                    } else if (msg.type === "pong") {
+                        console.log(`pong t=${msg.t}`);
+                    } else if (msg.type === "error") {
+                        console.error(`Error: ${msg.error}`);
+                    } else if (msg.volume !== undefined) {
+                        // fallback for direct volume stream mapping
+                        const v = Math.max(0, Math.min(1, Number(msg.volume)));
+                        mouthValue = v;
+                        volEl.textContent = v.toFixed(3);
+                    }
+                    if (msg.event) {
+                        startEvent(msg.event);
+                    }
+                } catch (err) {
+                    console.error("Bad msg", err);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket Disconnected. Reconnecting...");
+                wsStatusEl.textContent = 'disconnected';
+                setTimeout(connectWebSocket, 1000);
+            }
+
+            ws.onerror = () => {
+                wsStatusEl.textContent = 'error';
+                console.error('WebSocket error');
+            }
+        };
+
+        connectWebSocket();
+
+        // Calculate volume for lip sync
+        const updateAudioVolume = () => {
+            if (analyser && dataArray) {
+                analyser.getFloatTimeDomainData(dataArray);
+                let sum = 0;
+                for(let i=0; i<dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+                let rms = Math.sqrt(sum / dataArray.length);
+                mouthValue = Math.min(1.0, rms * 15.0); // Adjust gain as needed
+                volEl.textContent = mouthValue.toFixed(3);
+            }
+            requestAnimationFrame(updateAudioVolume);
+        };
+
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            document.getElementById('startOverlay').style.display = 'none';
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;  // Smaller FFT = less latency in volume detection
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                updateAudioVolume();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "start_game" }));
+            }
+            if (window.gameMenu) {
+                window.gameMenu.visible = true;
+            }
+        });
+
+        let currentHologram = null;
+        window.handleMenuSelection = (sceneId) => {
+            if (currentHologram) {
+                threeScene.remove(currentHologram);
+                currentHologram = null;
+            }
+
+            if (sceneId === 'main') {
+                if (window.gameMenu) window.gameMenu.visible = true;
+                if (window.backMenu) window.backMenu.visible = false;
+                document.getElementById('chatOverlay').style.display = 'none';
+                
+                // Return character to center
+                if (typeof gsap !== 'undefined' && typeof vrm !== 'undefined' && vrm) {
+                    gsap.to(vrm.scene.position, { x: 0, z: 0, duration: 1.5, ease: "power2.inOut" });
+                }
+            } else {
+                if (window.gameMenu) window.gameMenu.visible = false;
+                if (window.backMenu) window.backMenu.visible = true;
+                
+                if (sceneId === 'chat') {
+                    document.getElementById('chatOverlay').style.display = 'flex';
+                    // Return character to center for chatting
+                    if (typeof gsap !== 'undefined' && typeof vrm !== 'undefined' && vrm) {
+                        gsap.to(vrm.scene.position, { x: 0, z: 0, duration: 1.5, ease: "power2.inOut" });
+                    }
+                } else {
+                    document.getElementById('chatOverlay').style.display = 'none';
+                    // Move character to the left to make room for massive holograms!
+                    if (typeof gsap !== 'undefined' && typeof vrm !== 'undefined' && vrm) {
+                        gsap.to(vrm.scene.position, { x: -0.9, z: -0.5, duration: 1.5, ease: "power2.inOut" });
+                    }
+                }
+                
+                // Spawn hologram logic
+                let targetAsset = null;
+                if (sceneId === 'moon') targetAsset = 'assets/Galileo.glb';
+                else if (sceneId === 'solar') targetAsset = 'assets/solar_system_animation/scene.gltf';
+                else if (sceneId === 'iss') targetAsset = 'assets/iss.glb';
+                else if (sceneId === 'jwst') targetAsset = 'assets/jwst.glb';
+
+                if (targetAsset) {
+                    if (window.captionEl) window.captionEl.textContent = "Downloading Model... Please wait!";
+                    
+                    const loader = new GLTFLoader();
+                    loader.load(targetAsset, (gltf) => {
+                        if (window.captionEl && window.captionEl.textContent.includes("Downloading")) window.captionEl.textContent = "";
+
+                        const model = gltf.scene || gltf.scenes[0];
+                        if (!model) return;
+                        
+                        if (currentHologram) { threeScene.remove(currentHologram); }
+
+                        // Auto-scale and center the model
+                        const box = new THREE.Box3().setFromObject(model);
+                        const center = box.getCenter(new THREE.Vector3());
+                        const size = box.getSize(new THREE.Vector3());
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        // Fit within a massive 1.6 unit boundary!
+                        const scale = (maxDim > 0) ? (1.6 / maxDim) : 1; 
+                        
+                        model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+                        model.scale.set(scale, scale, scale);
+                        
+                        const wrapper = new THREE.Group();
+                        wrapper.add(model);
+                        // Position massive hologram dead center (x: 0.3 offset creates balance)
+                        wrapper.position.set(0.3, 1.2, -0.5);
+
+                        currentHologram = wrapper;
+                        threeScene.add(wrapper);
+                        
+                        // Stronger Hologram light from the front
+                        if (!window.hologramLight) {
+                            window.hologramLight = new THREE.DirectionalLight(0xffffff, 4.0);
+                            window.hologramLight.position.set(0.5, 2, 2);
+                            threeScene.add(window.hologramLight);
+                        }
+                    });
+                }
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "menu_select", scene: sceneId }));
+            }
+        };
+
+        // Chat Input Handlers
+        document.getElementById('chatSendBtn').addEventListener('click', () => {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "user_text", text: text, mode: "chat" }));
+                input.value = "";
+            }
+        });
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+             if(e.key === 'Enter') document.getElementById('chatSendBtn').click();
+        });
+
+        // Voice API logic (MediaRecorder over WS to Faster-Whisper!)
+        const micBtn = document.createElement('button');
+        micBtn.innerText = "🎤 Hold to Talk";
+        micBtn.className = "mic-btn-modern";
+        document.getElementById('chatOverlay').appendChild(micBtn);
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        const resetMicBtn = () => {
+            micBtn.innerText = "🎤 Hold to Talk";
+            micBtn.style.background = "";
+            micBtn.style.borderColor = "";
+        };
+
+        const stopRecording = () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            resetMicBtn();
+        };
+
+        micBtn.addEventListener('mousedown', async () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Microphone not supported on this browser context! Use localhost or HTTPS.");
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // We use webm audio which works smoothly on Chrome.
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        const b64 = reader.result.split(',')[1];
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ type: "voice_audio", b64: b64, mode: "chat" }));
+                            if (captionEl) captionEl.textContent = "Processing speech locally...";
+                        }
+                    };
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                
+                mediaRecorder.start();
+                micBtn.innerText = "🛑 Listening...";
+                micBtn.style.background = "rgba(255, 34, 34, 0.4)";
+                micBtn.style.borderColor = "rgba(255, 34, 34, 0.8)";
+            } catch(e) {
+                console.error("Mic access denied", e);
+                resetMicBtn();
+            }
+        });
+
+        micBtn.addEventListener('mouseup', stopRecording);
+        micBtn.addEventListener('mouseleave', stopRecording);
+    </script>
+</body>
+</html>

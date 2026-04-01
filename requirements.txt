@@ -1,0 +1,7 @@
+# Dependencies for realtime_moon_assistant.py
+
+numpy
+ollama
+kokoro-onnx
+sounddevice
+websockets
