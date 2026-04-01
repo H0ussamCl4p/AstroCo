@@ -6,7 +6,7 @@ echo "=== Deploying AstroCo to Azure ==="
 
 # 1. Update system and install dependencies
 sudo apt-get update
-sudo apt-get install -y python3.10 python3.10-venv python3-pip nginx certbot python3-certbot-nginx zip unzip curl git
+sudo apt-get install -y python3 python3-venv python3-pip nginx certbot python3-certbot-nginx zip unzip curl git
 
 # 2. Install Node.js
 if ! command -v node &> /dev/null
