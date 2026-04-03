@@ -100,6 +100,10 @@ function spawnHologram(assetPath) {
             window.hologramLight.position.set(0.5, 2, 2);
             state.threeScene.add(window.hologramLight);
         }
+    }, undefined, (err) => {
+        const msg = `Failed to load hologram asset at ${assetPath}. Make sure /assets/* is being served (scene.gltf + textures).`;
+        console.error(msg, err);
+        if (state.dom.caption) state.dom.caption.textContent = msg;
     });
 }
 

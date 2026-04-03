@@ -2,7 +2,6 @@
  * Shared application state — single source of truth for cross-module data.
  * Each module imports only what it needs from here.
  */
-import * as THREE from 'three';
 
 // ─── Renderer / Scene / Camera ───
 export let threeRenderer = null;
@@ -84,7 +83,15 @@ export const setAnalyserConnected = (v) => { analyserConnected = v; };
 export const setNextAudioTime     = (v) => { nextAudioTime = v; };
 
 // ─── Clock (shared across animation) ───
-export const clock = new THREE.Clock();
+let _lastClockS = performance.now() * 0.001;
+export const clock = {
+    getDelta() {
+        const nowS = performance.now() * 0.001;
+        const dt = nowS - _lastClockS;
+        _lastClockS = nowS;
+        return dt;
+    },
+};
 
 // ─── Model URL ───
 export const MODEL_URL = '/models/space-avatar.vrm';

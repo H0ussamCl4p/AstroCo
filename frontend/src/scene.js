@@ -464,9 +464,22 @@ export async function setupVrmScene() {
     // Load VRM
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
-    const gltf = await loader.loadAsync(state.MODEL_URL);
+    let gltf;
+    try {
+        gltf = await loader.loadAsync(state.MODEL_URL);
+    } catch (e) {
+        const msg = `Failed to load VRM at ${state.MODEL_URL}. This usually means the file is missing or your server is returning HTML (404/fallback) instead of the .vrm.`;
+        console.error(msg, e);
+        if (state.dom.caption) state.dom.caption.textContent = msg;
+        throw e;
+    }
+
     VRMUtils.removeUnnecessaryVertices(gltf.scene);
-    VRMUtils.removeUnnecessaryJoints(gltf.scene);
+    if (typeof VRMUtils.combineSkeletons === 'function') {
+        VRMUtils.combineSkeletons(gltf.scene);
+    } else {
+        VRMUtils.removeUnnecessaryJoints(gltf.scene);
+    }
 
     const vrm = gltf.userData.vrm;
     if (!vrm) throw new Error('VRM loader did not produce a vrm instance');
