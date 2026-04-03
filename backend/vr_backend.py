@@ -130,17 +130,33 @@ async def _handle_message(state: AppState, msg: dict[str, Any]):
     if mtype == "menu_select":
         scene = str(msg.get("scene") or "").strip()
         if scene:
-            assistant_text = f"Great choice! Let's explore the {scene}."
+            # Scene narration (keep it short for VR comfort)
+            scene_narration = {
+                "solar": "[Surprised] Welcome to the Solar System! This hologram shows the Sun and the planets in motion.",
+                "gateway": "[Happy] This is Lunar Gateway, a space station planned to orbit the Moon and support future missions.",
+                "yutu": "[Happy] Meet Yutu-2! It's a lunar rover exploring the far side of the Moon.",
+            }
+
             if scene == "chat":
                 assistant_text = "[Happy] Awesome, let's chat! What would you like to ask me about space?"
+                cache_key = "chat_mode"
             elif scene == "main":
                 assistant_text = "[Thinking] What else would you like to explore?"
-            
-            clean_text = re.sub(r'\[.*?\]', '', assistant_text).strip()
-            samples, sample_rate = state.kokoro.create(
-                clean_text, voice=TTS_VOICE, speed=TTS_SPEED, lang=TTS_LANG
-            )
-            wav = _wav_bytes(samples, sample_rate=sample_rate)
+                cache_key = "back_menu"
+            else:
+                assistant_text = scene_narration.get(scene) or f"[Happy] Great choice! Let's explore {scene}."
+                cache_key = f"scene_{scene}"
+
+            if cache_key in state.tts_cache:
+                wav = state.tts_cache[cache_key]
+                sample_rate = 24000  # Kokoro default; used only for info
+            else:
+                clean_text = re.sub(r"\[.*?\]", "", assistant_text).strip()
+                samples, sample_rate = state.kokoro.create(
+                    clean_text, voice=TTS_VOICE, speed=TTS_SPEED, lang=TTS_LANG
+                )
+                wav = _wav_bytes(samples, sample_rate=sample_rate)
+                state.tts_cache[cache_key] = wav
             yield {
                 "type": "assistant_reply",
                 "text": assistant_text,
@@ -367,6 +383,9 @@ async def _ws_handler(websocket):
             "start_game": "Hello! Welcome to the Astronomy Festival. Are you ready to discover the universe? Please select an option from the menu.",
             "chat_mode": "Awesome, let's chat! What would you like to ask me about space?",
             "back_menu": "What else would you like to explore?",
+            "scene_solar": "Welcome to the Solar System! This hologram shows the Sun and the planets in motion.",
+            "scene_gateway": "This is Lunar Gateway, a space station planned to orbit the Moon and support future missions.",
+            "scene_yutu": "Meet Yutu-2! It's a lunar rover exploring the far side of the Moon.",
             "filler_thinking": "Hmm, let me think.",
         }
         for key, phrase in cache_phrases.items():
