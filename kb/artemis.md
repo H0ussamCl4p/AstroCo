@@ -49,12 +49,24 @@ Schedules and details can change; treat future mission dates as *planning target
 
 ## Artemis II (mission facts + crew)
 
-### Artemis II (PLANNED)
+### Artemis II (PLANNED → in-flight updates; verify with NASA)
 - Mission type (NASA): crewed lunar flyby.
 - Crew size: 4.
 - Duration (NASA): about 10 days.
 - Goal: first mission to fly astronauts on SLS + Orion; demonstrate operations needed for deep-space crewed missions by sending the crew around the Moon.
 - Launch timing (as listed on NASA mission page): no earlier than April 1, 2026.
+
+### Artemis II (early April 2026 — first in-flight images; media reporting)
+- Media reporting (Le Monde with AP, Apr 3, 2026) described Artemis II as underway and cited NASA publishing the first images transmitted by the crew.
+- Images described:
+	- First photo credited to commander Reid Wiseman shows a curved portion of Earth through an Orion window.
+	- Another shows the full Earth disk (oceans + cloud bands).
+- Image date reported: Apr 2, 2026 (Earth seen from Orion’s window).
+- Location reported (mid-morning Apr 3): ~145,000 km from Earth, closing on the Moon; ~270,000 km remaining.
+- Mission profile described (media): loop around the Moon in Orion, turn around, and return directly to Earth (no stop/landing).
+- A major engine burn was described as occurring the prior evening to set Orion on its lunar trajectory.
+- Framing claim (media): first “lunar travelers” since Apollo 17 (1972).
+- Assistant note: treat these as *time-sensitive media reporting*; for the official launch time + mission timeline, prefer NASA’s mission page / updates.
 
 ### Artemis II (late March 2026 pre-launch updates — media reporting)
 - Context: news coverage reported the Artemis II crew arriving at Kennedy Space Center (KSC) and visiting the launch site ahead of an early-April attempt.
