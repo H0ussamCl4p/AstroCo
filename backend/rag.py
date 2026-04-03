@@ -185,8 +185,53 @@ def chunk_text(text: str, *, chunk_chars: int = 900, overlap: int = 160) -> list
 
 
 def _ollama_embed(ollama, *, model: str, prompt: str) -> list[float]:
-    """Calls ollama embeddings API with some version tolerance."""
-    resp = ollama.embeddings(model=model, prompt=prompt)
+    """Calls Ollama embeddings API with retries.
+
+    NOTE: The Ollama Python client can sometimes block for a long time if the
+    local Ollama server stalls or returns intermittent errors. For the RAG index
+    build we prefer a bounded timeout + retry behavior.
+    """
+    import json
+    import os
+    import urllib.error
+    import urllib.request
+
+    host = str(os.environ.get("OLLAMA_HOST") or "http://127.0.0.1:11434").rstrip("/")
+    url = f"{host}/api/embeddings"
+
+    timeout_s = float(os.environ.get("ASTROCO_OLLAMA_TIMEOUT_S") or 120)
+    max_retries = int(os.environ.get("ASTROCO_OLLAMA_RETRIES") or 5)
+
+    last_err: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            payload = json.dumps({"model": model, "prompt": prompt}).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            resp_obj = json.loads(raw)
+            resp = resp_obj
+            break
+        except urllib.error.HTTPError as e:
+            last_err = e
+        except Exception as e:  # network/timeout/json
+            last_err = e
+
+        if attempt < max_retries:
+            time.sleep(min(2.5, 0.35 * attempt))
+            continue
+
+    else:
+        # Should be unreachable due to the break above, but kept for clarity.
+        resp = None
+
+    if last_err is not None and resp is None:
+        raise RuntimeError(f"Ollama embeddings failed after {max_retries} retries at {url}: {last_err}")
 
     # Newer ollama Python clients return a pydantic object:
     # EmbeddingsResponse(embedding=[...])
@@ -234,10 +279,12 @@ def build_index(
     chunks: list[dict] = []
     emb_list: list[list[float]] = []
 
+    # Build the chunk list first so we can show progress with a known total.
+    file_count = 0
     for file_path in iter_kb_files(kb_dir):
+        file_count += 1
         raw = _safe_read_text(file_path)
         for i, chunk in enumerate(chunk_text(raw, chunk_chars=chunk_chars, overlap=overlap)):
-            emb = _ollama_embed(ollama, model=embed_model, prompt=chunk)
             chunks.append(
                 {
                     "source": str(file_path.as_posix()),
@@ -245,7 +292,18 @@ def build_index(
                     "text": chunk,
                 }
             )
-            emb_list.append([float(x) for x in emb])
+
+    total = len(chunks)
+    print(f"Building RAG index: {file_count} files, {total} chunks, model={embed_model}", flush=True)
+
+    t0 = time.time()
+    for idx, item in enumerate(chunks, start=1):
+        emb = _ollama_embed(ollama, model=embed_model, prompt=item["text"])
+        emb_list.append([float(x) for x in emb])
+        if idx == 1 or idx == total or (idx % 10 == 0):
+            dt = time.time() - t0
+            rate = idx / max(0.001, dt)
+            print(f"  embeddings {idx}/{total} ({rate:.2f} chunks/s)", flush=True)
 
     payload: dict = {
         "schema": 1,
