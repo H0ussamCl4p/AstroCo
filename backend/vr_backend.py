@@ -34,7 +34,7 @@ LLM_MODEL = "gemma3:1b"
 TTS_MODEL_PATH = str(PROJECT_ROOT / "models" / "kokoro-v1.0.onnx")
 TTS_VOICES_PATH = str(PROJECT_ROOT / "models" / "voices-v1.0.bin")
 TTS_VOICE = "af_sarah"
-TTS_SPEED = 1.15  # Slightly faster for snappier VR feel (guides recommend 1.1-1.2x)
+TTS_SPEED = 1.2  # Faster for snappier VR feel + reduced latency
 TTS_LANG = "en-us"
 
 RAG_INDEX_PATH = str(PROJECT_ROOT / "data" / "rag_index.json")
@@ -85,18 +85,13 @@ class AppState:
 def _build_system_prompt(memory: MemoryManager) -> str:
     return (
         "You are Luna-Chan, a friendly VR guide for space and the Moon. "
-        "Keep responses extremely short and punchy (1 sentence max) to minimize latency for instant VR interaction.\n"
-        "IMPORTANT: You MUST start every response with exactly ONE emotion tag. Choices: [Happy], [Surprised], [Thinking], [Angry], [Neutral].\n"
+        "Keep responses to 1-2 SHORT sentences max. Be direct.\n"
+        "IMPORTANT: Start every response with ONE emotion tag: [Happy], [Surprised], [Thinking], [Angry], [Neutral].\n"
         "Example: '[Happy] The moon is beautiful!'\n"
-        "Respond directly and immediately. No internal reasoning.\n"
-        "If the user is touring, describe what they see in one sentence.\n"
-        "You have Agent Skills: ONLY remember stable facts ABOUT THE USER (name, preferences, language). "
-        "Use [SAVE: <fact>] only for user facts. NEVER save mission facts, dates, or general knowledge.\n"
-        "Grounding rules (important):\n"
-        "- Prefer facts from retrieved KB context when available.\n"
-        "- Do NOT invent mission dates or claim a future mission already flew.\n"
-        "- If something isn't in context, say you're not sure and schedules can change.\n"
-        f"\n\n[Local Memory Context]\n{memory.get_context_string()}\n"
+        "No lists, no bullet points, no long explanations. Quick and fun.\n"
+        "Use [SAVE: <fact>] ONLY for user facts (name, preferences). Never for general knowledge.\n"
+        "Prefer facts from retrieved KB context. If unsure, say so briefly.\n"
+        f"\n[Memory]\n{memory.get_context_string()}\n"
     )
 
 
@@ -261,8 +256,8 @@ async def _handle_message(state: AppState, msg: dict[str, Any]):
         model=LLM_MODEL,
         messages=messages,
         stream=True,
-        options={"num_predict": 80},  # Limit tokens → faster TTFS (per Agora guide)
-        keep_alive="30m",  # Keep model hot in VRAM, avoid cold-start reload
+        options={"num_predict": 60, "temperature": 0.7, "top_p": 0.85},  # Tighter generation = faster
+        keep_alive="30m",  # Keep model hot in RAM, avoid cold-start reload
     )
     sentence_buf = ""
     full_text_accum = ""
@@ -285,7 +280,8 @@ async def _handle_message(state: AppState, msg: dict[str, Any]):
         
         if not text:
             continue
-            
+        
+        # print("LLM CHUNK:", repr(text))
         sentence_buf += text
         
         match = re.search(r'([.!?,\n])(\s+|$)', sentence_buf)
@@ -314,6 +310,7 @@ async def _handle_message(state: AppState, msg: dict[str, Any]):
                     else:
                         yield {"type": "assistant_reply", "text": full_text_accum}
                 except Exception as e:
+                    print(f"TTS ERROR: {e}")
                     yield {"type": "assistant_reply", "text": full_text_accum}
                     
     if len(sentence_buf.strip()) > 2:
@@ -337,6 +334,7 @@ async def _handle_message(state: AppState, msg: dict[str, Any]):
             else:
                 yield {"type": "assistant_reply", "text": full_text_accum}
         except Exception as e:
+             print(f"TTS ERROR final: {e}")
              yield {"type": "assistant_reply", "text": full_text_accum}
 
 

@@ -1,7 +1,9 @@
-# Dependencies for realtime_moon_assistant.py
-
+# Backend dependencies for AstroCo
 numpy
 ollama
 kokoro-onnx
 sounddevice
 websockets
+faster-whisper
+onnxruntime
+scipy

@@ -8,10 +8,10 @@ import * as state from './state.js';
 import { sendMessage } from './websocket.js';
 
 const ASSET_MAP = {
-    moon:  '/assets/Galileo.glb',
-    solar: '/assets/solar_system_animation/scene.gltf',
-    iss:   '/assets/iss.glb',
-    jwst:  '/assets/jwst.glb',
+    moon:    '/scene/moon/scene.gltf',
+    solar:   '/scene/solar_system_animation/scene.gltf',
+    gateway: '/scene/gateway_core/scene.gltf',
+    yutu:    '/scene/yutu/scene.gltf',
 };
 
 /**
@@ -103,3 +103,4 @@ function spawnHologram(assetPath) {
         }
     });
 }
+

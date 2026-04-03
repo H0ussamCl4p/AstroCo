@@ -244,9 +244,9 @@ function create3DMenus(scene) {
     const items = [
         ["Let's Chat", 0.6, 'chat'],
         ['Discover Moon', 0.3, 'moon'],
-        ['Discover Solar System', 0.0, 'solar'],
-        ['Discover ISS', -0.3, 'iss'],
-        ['Discover JWST', -0.6, 'jwst'],
+        ['Solar System', 0.0, 'solar'],
+        ['Lunar Gateway', -0.3, 'gateway'],
+        ['Yutu-2 Rover', -0.6, 'yutu'],
     ];
     items.forEach(([t, y, id]) => window.gameMenu.add(createMenuButton(t, y, id)));
     window.gameMenu.visible = false;

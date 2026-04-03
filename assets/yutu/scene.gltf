@@ -1,0 +1,581 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 4,
+      "max": [
+        1.5875600576400757,
+        1.5875600576400757,
+        0.0
+      ],
+      "min": [
+        -1.5875600576400757,
+        -1.5875600576400757,
+        0.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 48,
+      "componentType": 5126,
+      "count": 4,
+      "max": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "min": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 4,
+      "max": [
+        1.0,
+        1.0
+      ],
+      "min": [
+        0.0,
+        0.0
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 6,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 96,
+      "componentType": 5126,
+      "count": 20324,
+      "max": [
+        2.049099922180176,
+        0.4034099876880646,
+        0.6017100214958191
+      ],
+      "min": [
+        0.986329972743988,
+        -0.5970399975776672,
+        -0.004860000219196081
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 243984,
+      "componentType": 5126,
+      "count": 20324,
+      "max": [
+        0.999994695186615,
+        0.9999945759773254,
+        1.0
+      ],
+      "min": [
+        -0.999994695186615,
+        -0.9999945759773254,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 20324,
+      "max": [
+        1.0,
+        0.999994695186615,
+        1.0,
+        1.0
+      ],
+      "min": [
+        -1.0,
+        -0.9999947547912598,
+        -1.0,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 32,
+      "componentType": 5126,
+      "count": 20324,
+      "max": [
+        0.997979998588562,
+        0.9956499934196472
+      ],
+      "min": [
+        -0.0015699999639764428,
+        0.0035000001080334187
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 162624,
+      "componentType": 5126,
+      "count": 20324,
+      "max": [
+        0.99822998046875,
+        1.0030800104141235
+      ],
+      "min": [
+        0.0007300000288523734,
+        0.008249999955296516
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 24,
+      "componentType": 5125,
+      "count": 49818,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 487872,
+      "componentType": 5126,
+      "count": 1509,
+      "max": [
+        1.8495700359344482,
+        0.27270999550819397,
+        0.378710001707077
+      ],
+      "min": [
+        1.2517600059509277,
+        -0.449319988489151,
+        0.05339999869465828
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 505980,
+      "componentType": 5126,
+      "count": 1509,
+      "max": [
+        0.9759431481361389,
+        0.9912424683570862,
+        1.0
+      ],
+      "min": [
+        -0.9650749564170837,
+        -0.9912469983100891,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 325184,
+      "componentType": 5126,
+      "count": 1509,
+      "max": [
+        0.9999939799308777,
+        0.9997470378875732,
+        1.0,
+        1.0
+      ],
+      "min": [
+        -0.9994009137153625,
+        -0.9697039723396301,
+        -0.9999443292617798,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 325216,
+      "componentType": 5126,
+      "count": 1509,
+      "max": [
+        0.9978200197219849,
+        0.9907699823379517
+      ],
+      "min": [
+        0.0007300000288523734,
+        0.008249999955296516
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 337288,
+      "componentType": 5126,
+      "count": 1509,
+      "max": [
+        0.9924600124359131,
+        0.9722099900245667
+      ],
+      "min": [
+        0.011219999752938747,
+        0.02181999944150448
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 199296,
+      "componentType": 5125,
+      "count": 2844,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "tashtego (https://sketchfab.com/tashtego)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/yutu-d9564c9a60c14b85a880cc0bfcf1a6b5",
+      "title": "Yutu"
+    },
+    "generator": "Sketchfab-16.56.0",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 210672,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 349360,
+      "byteOffset": 210672,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 524088,
+      "byteOffset": 560032,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 349328,
+      "byteOffset": 1084120,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 1433448,
+      "uri": "scene.bin"
+    }
+  ],
+  "extensionsUsed": [
+    "KHR_materials_specular"
+  ],
+  "images": [
+    {
+      "uri": "textures/Yutu_color_baseColor.png"
+    },
+    {
+      "uri": "textures/Yutu_color_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/Yutu_color_normal.png"
+    },
+    {
+      "uri": "textures/Yutu_color_specularf0.png"
+    },
+    {
+      "uri": "textures/Yutu_GoldFoil_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/Yutu_GoldFoil_normal.png"
+    },
+    {
+      "uri": "textures/Floor_baseColor.png"
+    }
+  ],
+  "materials": [
+    {
+      "extensions": {
+        "KHR_materials_specular": {
+          "specularColorFactor": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "specularFactor": 1.0,
+          "specularTexture": {
+            "index": 3
+          }
+        }
+      },
+      "name": "Yutu_color",
+      "normalTexture": {
+        "index": 2,
+        "scale": 0.65
+      },
+      "occlusionTexture": {
+        "index": 1,
+        "texCoord": 1
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 1
+        },
+        "roughnessFactor": 0.20000000298023202
+      }
+    },
+    {
+      "name": "Yutu_GoldFoil",
+      "normalTexture": {
+        "index": 5,
+        "texCoord": 1
+      },
+      "occlusionTexture": {
+        "index": 4,
+        "strength": 0.8300000000000001
+      },
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.7241664348743744,
+          0.8617178210369971,
+          1.0,
+          1.0
+        ],
+        "metallicRoughnessTexture": {
+          "index": 4
+        },
+        "roughnessFactor": 0.20000000298023202
+      }
+    },
+    {
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "extensions": {
+        "KHR_materials_specular": {
+          "specularColorFactor": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "specularFactor": 0.0
+        }
+      },
+      "name": "Floor",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 6
+        },
+        "metallicFactor": 0.0
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Floor",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 2,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Yutu",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 5,
+            "POSITION": 4,
+            "TANGENT": 6,
+            "TEXCOORD_0": 7,
+            "TEXCOORD_1": 8
+          },
+          "indices": 9,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Yutu",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 11,
+            "POSITION": 10,
+            "TANGENT": 12,
+            "TEXCOORD_0": 13,
+            "TEXCOORD_1": 14
+          },
+          "indices": 15,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.220446049250313e-16,
+        -1.0,
+        0.0,
+        0.0,
+        1.0,
+        2.220446049250313e-16,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Sketchfab_model"
+    },
+    {
+      "children": [
+        2,
+        4
+      ],
+      "name": "Root"
+    },
+    {
+      "children": [
+        3
+      ],
+      "matrix": [
+        0.7032700000000001,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7032700000000001,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7032700000000001,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Floor"
+    },
+    {
+      "mesh": 0,
+      "name": "Floor"
+    },
+    {
+      "children": [
+        5,
+        6
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        -1.51021,
+        0.09356000000000003,
+        -0.003270000000000001,
+        1.0
+      ],
+      "name": "Yutu"
+    },
+    {
+      "mesh": 1,
+      "name": "Yutu"
+    },
+    {
+      "mesh": 2,
+      "name": "Yutu"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Sketchfab_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    },
+    {
+      "sampler": 0,
+      "source": 3
+    },
+    {
+      "sampler": 0,
+      "source": 4
+    },
+    {
+      "sampler": 0,
+      "source": 5
+    },
+    {
+      "sampler": 0,
+      "source": 6
+    }
+  ]
+}
