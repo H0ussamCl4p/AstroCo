@@ -8,10 +8,10 @@ import * as state from './state.js';
 import { sendMessage } from './websocket.js';
 
 const ASSET_MAP = {
-    moon:    '/scene/moon/scene.gltf',
-    solar:   '/scene/solar_system_animation/scene.gltf',
-    gateway: '/scene/gateway_core/scene.gltf',
-    yutu:    '/scene/yutu/scene.gltf',
+    moon:    '/assets/moon/scene.gltf',
+    solar:   '/assets/solar_system_animation/scene.gltf',
+    gateway: '/assets/gateway_core/scene.gltf',
+    yutu:    '/assets/yutu/scene.gltf',
 };
 
 /**

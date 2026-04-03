@@ -8,6 +8,10 @@ node_modules/
 dist/
 *$py.class
 
+# Generated deploy/build archives
+dist.zip
+dist.tar.gz
+
 # Enviroment variables
 .env
 

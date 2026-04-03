@@ -211,9 +211,6 @@
     },
     {
       "uri": "textures/Material_39_specularGlossiness.jpeg"
-    },
-    {
-      "uri": "textures/Material_39_normal.png"
     }
   ],
   "materials": [
@@ -241,11 +238,7 @@
           }
         }
       },
-      "name": "Material_39",
-      "normalTexture": {
-        "index": 2,
-        "scale": 0.07342720826843567
-      }
+      "name": "Material_39"
     }
   ],
   "meshes": [
@@ -385,10 +378,6 @@
     {
       "sampler": 0,
       "source": 1
-    },
-    {
-      "sampler": 0,
-      "source": 2
     }
   ]
 }
