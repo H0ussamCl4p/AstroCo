@@ -82,13 +82,8 @@ Schedules and details can change; treat future mission dates as *planning target
 ### Artemis II (early April 2026 mission explainers — media reporting)
 - Context: additional media explainers described Artemis II as the first crewed Artemis mission and highlighted what the flight is meant to prove.
 - Launch period described (media): a targeted window in early April 2026 (often summarized as Apr 1–Apr 6), subject to technical readiness and weather.
-- Mission profile described (media):
-	- Initial checkout in Earth orbit.
-	- Translunar injection toward the Moon, with a ~3–4 day outbound coast described.
-	- Lunar flyby / around-the-Moon flight (no landing).
-	- Return to Earth for high-energy reentry and Pacific Ocean splashdown.
+- Mission profile described (media): crewed lunar flyby / around-the-Moon flight (no landing), then return to Earth.
 - What Artemis II is testing (media): life support / crew systems, navigation, communications, and heat-shield performance on a crewed deep-space return.
-- Program staging (media): some reporting frames Artemis II as the crewed systems test before a later crewed landing mission.
 - “Firsts” highlighted in media:
 	- Christina Koch described as the first woman to fly on a crewed mission around the Moon.
 	- Victor Glover described as the first Black astronaut to travel toward/around the Moon.
